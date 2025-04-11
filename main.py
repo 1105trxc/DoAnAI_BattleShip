@@ -211,3 +211,203 @@ while RUNGAME:
     updateGameScreen(GAMESCREEN)
 
 pygame.quit()
+
+
+# Khởi tạo font một lần để tối ưu
+pygame.font.init() # Cần thiết nếu dùng font trước pygame.init() chính
+STENCIL_FONT_22 = pygame.font.SysFont('Stencil', 22)
+STENCIL_FONT_30 = pygame.font.SysFont('Stencil', 30)
+
+# Khởi tạo màu sắc
+WHITE = (255, 255, 255)
+RED = (255, 0, 0)
+BLACK = (0, 0, 0)
+BLUE = (0, 17, 167)
+MESSAGE_BG_COLOR = (50, 50, 50, 200)
+
+class Button:
+    def __init__(self, image, size, pos, msg, button_image_larger=None): # Allow passing larger image
+        self.name = msg
+        self.image = image # Should be the loaded pygame.Surface
+        # Create larger image if not provided
+        if button_image_larger:
+             self.imageLarger = button_image_larger
+        elif self.image:
+             self.imageLarger = pygame.transform.scale(self.image, (size[0] + 10, size[1] + 10))
+        else:
+             self.imageLarger = None # Handle case where image is None
+
+        if self.image:
+            self.rect = self.image.get_rect(topleft=pos)
+        else:
+            # Fallback rect if no image
+            self.rect = pygame.Rect(pos[0], pos[1], size[0], size[1])
+
+        self.active = False # Whether the button is currently enabled/clickable
+        self.msg = self.addText(msg)
+        self.msgRect = self.msg.get_rect(center=self.rect.center)
+
+
+    def addText(self, msg):
+        # Use the pre-loaded font
+        message = STENCIL_FONT_22.render(msg, 1, WHITE)
+        return message
+
+
+    def focusOnButton(self, window):
+        # Highlight button on mouse hover if active
+        if self.active and self.image and self.imageLarger: # Check images exist
+            mouse_pos = pygame.mouse.get_pos()
+            if self.rect.collidepoint(mouse_pos):
+                # Center the larger image relative to the original rect's center
+                larger_rect = self.imageLarger.get_rect(center=self.rect.center)
+                window.blit(self.imageLarger, larger_rect)
+            else:
+                window.blit(self.image, self.rect)
+        elif self.active and self.image: # Draw normal image if no larger one
+             window.blit(self.image, self.rect)
+        # Optionally draw a simple rect if no image but active?
+        # elif self.active:
+        #     pygame.draw.rect(window, (100, 100, 100), self.rect) # Example grey rect
+
+
+    # actionOnPress now needs arguments or needs main loop to handle actions
+    # Option 1: Return action name (preferred)
+    def get_action_on_press(self):
+         if self.active and self.rect.collidepoint(pygame.mouse.get_pos()):
+              # Return the name/action identifier
+              return self.name
+         return None
+
+    # Option 2: Keep original calls (requires careful imports or passing objects - less ideal)
+    # def actionOnPress(self, pFleet, cFleet, pGameGrid, cGameGrid, pGameLogic, cGameLogic, TOKENS, DEPLOYMENT_STATUS_VAR):
+    #     # This version needs many parameters passed in
+    #     if self.active:
+    #         if self.name == 'Randomize':
+    #             # Needs access to randomizeShipPositions function and fleets/grids
+    #             from game_logic import randomizeShipPositions # Potential circular import issue?
+    #             if DEPLOYMENT_STATUS_VAR: # Check deployment status
+    #                randomizeShipPositions(pFleet, pGameGrid)
+    #                # randomizeShipPositions(cFleet, cGameGrid) # Don't randomize computer here?
+    #         elif self.name == 'Reset':
+    #             # Needs access to resetShips function
+    #             from game_logic import resetShips
+    #             if DEPLOYMENT_STATUS_VAR:
+    #                  resetShips(pFleet)
+    #         elif self.name == 'Deploy':
+    #              # Logic handled in main loop based on return value or state change
+    #              pass
+    #         elif self.name == 'Quit':
+    #              # Logic handled in main loop
+    #              pass
+    #         elif self.name == 'Redeploy':
+    #              # Logic handled in main loop
+    #              pass
+    #         elif self.name == 'Back to Main':
+    #              # Logic handled in main loop
+    #              pass
+
+
+    def updateButtons(self, current_deployment_status):
+        # Updates button text based on deployment status
+        original_name = self.name # Store original if needed for logic
+        updated = False
+        if original_name == 'Deploy' and not current_deployment_status:
+            self.name = 'Redeploy'
+            updated = True
+        elif original_name == 'Redeploy' and current_deployment_status:
+            self.name = 'Deploy'
+            updated = True
+
+        if original_name == 'Randomize' and not current_deployment_status:
+            self.name = 'Quit' # Or maybe 'Main Menu'? Quit seems drastic here.
+            updated = True
+        elif original_name == 'Quit' and current_deployment_status:
+             self.name = 'Randomize'
+             updated = True
+
+        # Add logic for Reset/Radar Scan if re-enabled later
+        # if original_name == 'Reset' and not current_deployment_status:
+        #    self.name = 'Radar Scan'
+        #    updated = True
+        # elif original_name == 'Radar Scan' and current_deployment_status:
+        #    self.name = 'Reset'
+        #    updated = True
+
+        if updated: # Only update text if name changed
+            self.msg = self.addText(self.name)
+            self.msgRect = self.msg.get_rect(center=self.rect.center)
+
+
+    def draw(self, window, current_deployment_status):
+         # Update button state/text if needed (e.g., Deploy/Redeploy)
+         self.updateButtons(current_deployment_status)
+         # Draw the button visual (handling hover)
+         self.focusOnButton(window)
+         # Draw the text on top
+         window.blit(self.msg, self.msgRect)
+
+
+
+class Tokens:
+    def __init__(self, image_surface, pos, action, imageList=None, explosionList=None, soundFile=None):
+        self.image = image_surface # Expecting a loaded pygame.Surface
+        self.rect = self.image.get_rect(topleft=pos) if self.image else pygame.Rect(pos[0],pos[1],0,0)
+        self.pos = pos # Store original top-left for reference
+        self.imageList = imageList if imageList else [] # Fire animation
+        self.explosionList = explosionList if explosionList else [] # Explosion animation
+        self.action = action # 'Hit', 'Miss'
+        # self.soundFile = soundFile # Sound handled in main loop now
+        self.timer = pygame.time.get_ticks()
+        self.imageIndex = 0 # Index for fire animation
+        self.explosionIndex = 0 # Index for explosion animation
+        self.explosion_finished = False # Flag if explosion animation is done
+
+
+    def animate_Explosion(self):
+        # Plays explosion animation once, then switches to fire
+        if not self.explosion_finished and self.explosionIndex < len(self.explosionList):
+             # Advance frame (consider timing)
+             # Simple frame-by-frame for now
+             img = self.explosionList[self.explosionIndex]
+             self.explosionIndex += 1
+             return img
+        else:
+             self.explosion_finished = True
+             return self.animate_fire()
+
+
+    def animate_fire(self):
+        # Loops the fire animation
+        if not self.imageList: # If no fire animation, return current static image
+            return self.image
+
+        # Update frame based on timer
+        now = pygame.time.get_ticks()
+        if now - self.timer >= 100: # 100ms per frame
+            self.timer = now
+            self.imageIndex = (self.imageIndex + 1) % len(self.imageList) # Loop index
+
+        return self.imageList[self.imageIndex]
+
+
+    def draw(self, window):
+        if not self.image: return # Don't draw if no image
+
+        display_image = None
+        if self.action == 'Hit':
+             if self.explosionList and not self.explosion_finished:
+                  display_image = self.animate_Explosion()
+             elif self.imageList:
+                  display_image = self.animate_fire()
+             else:
+                  display_image = self.image # Fallback to static hit token
+        else: # Miss or other actions
+            display_image = self.image
+
+        if display_image:
+             # Adjust position slightly for animations (like the original code)
+             temp_rect = display_image.get_rect(topleft=self.pos)
+             if self.action == 'Hit' and (self.imageList or self.explosionList):
+                  temp_rect.top = self.pos[1] - 10 # Move up slightly for fire/explosion
+             window.blit(display_image, temp_rect)
