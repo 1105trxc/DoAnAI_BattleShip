@@ -279,34 +279,6 @@ class Button:
               return self.name
          return None
 
-    # Option 2: Keep original calls (requires careful imports or passing objects - less ideal)
-    # def actionOnPress(self, pFleet, cFleet, pGameGrid, cGameGrid, pGameLogic, cGameLogic, TOKENS, DEPLOYMENT_STATUS_VAR):
-    #     # This version needs many parameters passed in
-    #     if self.active:
-    #         if self.name == 'Randomize':
-    #             # Needs access to randomizeShipPositions function and fleets/grids
-    #             from game_logic import randomizeShipPositions # Potential circular import issue?
-    #             if DEPLOYMENT_STATUS_VAR: # Check deployment status
-    #                randomizeShipPositions(pFleet, pGameGrid)
-    #                # randomizeShipPositions(cFleet, cGameGrid) # Don't randomize computer here?
-    #         elif self.name == 'Reset':
-    #             # Needs access to resetShips function
-    #             from game_logic import resetShips
-    #             if DEPLOYMENT_STATUS_VAR:
-    #                  resetShips(pFleet)
-    #         elif self.name == 'Deploy':
-    #              # Logic handled in main loop based on return value or state change
-    #              pass
-    #         elif self.name == 'Quit':
-    #              # Logic handled in main loop
-    #              pass
-    #         elif self.name == 'Redeploy':
-    #              # Logic handled in main loop
-    #              pass
-    #         elif self.name == 'Back to Main':
-    #              # Logic handled in main loop
-    #              pass
-
 
     def updateButtons(self, current_deployment_status):
         # Updates button text based on deployment status
@@ -325,14 +297,6 @@ class Button:
         elif original_name == 'Quit' and current_deployment_status:
              self.name = 'Randomize'
              updated = True
-
-        # Add logic for Reset/Radar Scan if re-enabled later
-        # if original_name == 'Reset' and not current_deployment_status:
-        #    self.name = 'Radar Scan'
-        #    updated = True
-        # elif original_name == 'Radar Scan' and current_deployment_status:
-        #    self.name = 'Reset'
-        #    updated = True
 
         if updated: # Only update text if name changed
             self.msg = self.addText(self.name)
