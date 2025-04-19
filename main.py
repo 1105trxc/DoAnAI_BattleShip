@@ -124,21 +124,6 @@ def loadImage(path, size, rotate=False):
     return img
 
 
-def createFleet():
-    """Creates the fleet of ships"""
-    fleet = []
-    for name in FLEET.keys():
-        fleet.append(
-            Ship(name,
-                 FLEET[name][1],
-                 FLEET[name][2],
-                 FLEET[name][3],
-                 FLEET[name][4],
-                 FLEET[name][5],
-                 FLEET[name][6],
-                 FLEET[name][7])
-        )
-    return fleet
 
 
 def updateGameScreen(window):
@@ -170,19 +155,7 @@ GAMESCREEN = pygame.display.set_mode((SCREENWIDTH, SCREENHEIGHT))
 pygame.display.set_caption('Battle Ship')
 
 
-#  Game Lists/DIctionaries
-FLEET = {
-    'carrier': ['carrier', 'assets/images/ships/carrier/carrier.png', (50, 600), (45, 245),
-                0, '', None, None],
-    'battleship': ['battleship', 'assets/images/ships/battleship/battleship.png', (125, 600), (40, 195),
-                   4, 'assets/images/ships/battleship/battleshipgun.png', (0.4, 0.125), [-0.525, -0.34, 0.67, 0.49]],
-    'destroyer': ['destroyer', 'assets/images/ships/destroyer/destroyer.png', (200, 600), (30, 145),
-                  2, 'assets/images/ships/destroyer/destroyergun.png', (0.5, 0.15), [-0.52, 0.71]],
-    'submarine': ['submarine', 'assets/images/ships/submarine/submarine.png', (275, 600), (30, 145),
-                  1, 'assets/images/ships/submarine/submarinegun.png', (0.25, 0.125), [-0.45]],
-    'patrol boat': ['patrol boat', 'assets/images/ships/patrol boat/patrol boat.png', (350, 600), (20, 95),
-                    0, '', None, None]
-}
+
 
 #  Loading Game Variables
 pGameGrid = createGameGrid(ROWS, COLS, CELLSIZE, (50, 50))
