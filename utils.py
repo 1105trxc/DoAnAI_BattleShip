@@ -1,7 +1,7 @@
 import pygame
 
 # Khởi tạo font một lần để tối ưu
-pygame.font.init() # Cần thiết nếu dùng font trước pygame.init() chính
+pygame.font.init()
 STENCIL_FONT_22 = pygame.font.SysFont('Stencil', 22)
 STENCIL_FONT_30 = pygame.font.SysFont('Stencil', 30)
 
@@ -41,8 +41,6 @@ def loadSpriteSheetImages(spriteSheet, rows, cols, newSize, size):
     image.blit(spriteSheet, (0, 0), (cols * size[0], rows * size[1], size[0], size[1]))
     # Scale về kích thước mới
     image = pygame.transform.scale(image, newSize)
-    # Không cần set_colorkey nếu đã load với convert_alpha() và nền trong suốt
-    # image.set_colorkey((0, 0, 0)) # Chỉ cần nếu ảnh gốc có nền đen cần xóa
     return image
 
 def loadSound(path, volume):
