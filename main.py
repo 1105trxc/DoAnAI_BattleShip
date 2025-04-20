@@ -27,7 +27,6 @@ pygame.display.set_caption('Battle Ship')
 clock = pygame.time.Clock()
 
 # --- Load Assets ---
-# (Giữ nguyên phần load assets từ phiên bản module hóa trước đó)
 MAINMENUIMAGE = utils.loadImage(C.MAINMENUIMAGE_PATH, (C.SCREENWIDTH, C.SCREENHEIGHT), alpha=False)
 ENDSCREENIMAGE = utils.loadImage(C.ENDSCREENIMAGE_PATH, (C.SCREENWIDTH, C.SCREENHEIGHT), alpha=False)
 BACKGROUND = utils.loadImage(C.BACKGROUND_PATH, (C.SCREENWIDTH, C.SCREENHEIGHT), alpha=False)
@@ -72,7 +71,6 @@ def createFleet(fleet_config, ship_class): # Helper stays same
     return fleet
 pFleet = createFleet(C.FLEET, Ship)
 cFleet = createFleet(C.FLEET, Ship)
-# Initial computer setup - CRITICAL FIX from before
 randomizeShipPositions(cFleet, cGameGridCoords)
 resetShips(cFleet, reset_position=False) # Use modified resetShips
 
@@ -107,8 +105,6 @@ STAGES = C.STAGE # Use STAGE from constants
 ROWS = C.ROWS
 COLS = C.COLS
 
-# --- Helper Function for Resetting Game ---
-# Ensure this function uses direct function calls and correct reset logic
 # --- Helper Function for Resetting Game ---
 def reset_game_for_new_round():
     # <<< THÊM PRINT ĐẦU HÀM >>>
@@ -168,7 +164,6 @@ while RUNGAME:
                             sortFleet(ship, pFleet) # Direct call
                             clicked_on_ship = True
                             break
-                    # No 'else' needed here, button check happens after
 
                 else: # Not Deployment (Attack Phase)
                     if player1.turn == True:
@@ -194,9 +189,6 @@ while RUNGAME:
                         action = button.name
                         if not DEPLOYMENT and action == 'Randomize': action = 'Quit'
                         elif DEPLOYMENT and action == 'Quit': action = 'Randomize'
-                        # Similar logic for Reset/Redeploy if name changes
-                        # elif not DEPLOYMENT and action == 'Reset': action = 'Redeploy'
-                        # elif DEPLOYMENT and action == 'Redeploy': action = 'Reset'
 
                         print(f"Button Clicked: {action}") # DEBUG using determined action
 
@@ -238,15 +230,8 @@ while RUNGAME:
                                 button_action_handled_this_click = True
                             # If clicked during Deploy/Attack, do nothing for AI buttons
 
-                        # --- Call actionOnPress() for remaining buttons (like original) ---
-                        # This assumes 'Randomize', 'Reset', 'Back to Main' logic
-                        # is primarily handled within the actionOnPress method of the Button class.
-                        # You MUST ensure the Button.actionOnPress method in game_objects.py
-                        # is correctly implemented and receives necessary parameters if needed.
                         if not button_action_handled_this_click:
                              print(f"Calling actionOnPress for: {action}") # DEBUG
-                             # button.actionOnPress() # <<< ORIGINAL CALL
-                             # Or, handle directly here if actionOnPress is not implemented fully:
                              if action == 'Randomize': # Only active when DEPLOYMENT is True
                                  if DEPLOYMENT:
                                      randomizeShipPositions(pFleet, pGameGridCoords)
