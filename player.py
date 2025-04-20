@@ -1,6 +1,6 @@
 import pygame
 import random
-from constants import CELLSIZE, SCREENWIDTH, ROWS, COLS # Assuming these are defined in constants.py
+from constants import CELLSIZE
 from game_objects import Tokens 
 
 class Player:
@@ -32,6 +32,11 @@ class Player:
                     if sounds.get('shot'): sounds['shot'].play()
                     if sounds.get('hit'): sounds['hit'].play()
 
+                    from game_logic import checkAndNotifyDestroyedShip
+                    checkAndNotifyDestroyedShip(grid_coords, logic_grid, enemy_fleet, message_boxes_list)
+
+                    self.turn = True # Player gets another turn after a hit
+
                 elif cell_state == ' ': # Miss an empty cell
                     logic_grid[row][col] = 'X' # Mark as Miss
                     # Add Miss Token (Need Green Token image)
@@ -43,7 +48,6 @@ class Player:
 
                     self.turn = False # Player loses turn after a miss
 
-                # If cell_state is 'T' or 'X', do nothing (already attacked)
                 return True # Attack was made (or attempted on already attacked cell)
 
         return False # Click was outside the grid
@@ -88,14 +92,28 @@ class EasyComputer:
                     tokens_list.append(Tokens(REDTOKEN, cell_pos, 'Hit', FIRETOKENIMAGELIST, EXPLOSIONIMAGELIST))
                     if sounds.get('shot'): sounds['shot'].play()
                     if sounds.get('hit'): sounds['hit'].play()
+                    from game_logic import checkAndNotifyDestroyedShip
+                    checkAndNotifyDestroyedShip(grid_coords, gamelogic, enemy_fleet, message_boxes_list)
+
+                    self.turn = True # Computer gets another turn after hit
+                    return True, True # Attack made, turn continues
+
+                elif cell_state == ' ': # Miss
+                    gamelogic[rowX][colX] = 'X'
+                    from main import BLUETOKEN # Loaded in main
+                    tokens_list.append(Tokens(BLUETOKEN, cell_pos, 'Miss'))
+                    if sounds.get('shot'): sounds['shot'].play()
+                    if sounds.get('miss'): sounds['miss'].play()
+
+                    self.turn = False 
+                    return True, False 
 
             else:
-                 # Could not find a valid cell (should only happen if grid full of T/X)
                  self.turn = False
-                 return False, False # No attack made, turn ends (failsafe)
+                 return False, False 
 
 
-        return False, self.turn # No attack made yet (due to timer), return current turn status
+        return False, self.turn 
 
     def draw(self, window, grid_coords):
         if self.turn:
@@ -164,6 +182,18 @@ class MediumComputer(EasyComputer):
                     if (rowX, colX) not in self.hits:
                         self.hits.append((rowX, colX))
 
+                    from game_logic import checkAndNotifyDestroyedShip, get_ship_at_coord
+                    destroyed_ship = checkAndNotifyDestroyedShip(grid_coords, gamelogic, enemy_fleet, message_boxes_list)
+
+                    # If a ship was sunk, remove its cells from the hits list
+                    if destroyed_ship:
+                         ship_cells = get_ship_at_coord(grid_coords, enemy_fleet, rowX, colX, gamelogic) # Need helper
+                         if ship_cells:
+                             self.hits = [(r, c) for r, c in self.hits if (r,c) not in ship_cells]
+
+
+                    self.turn = True # Continue turn
+                    return True, True # Attack made, turn continues
 
                 elif cell_state == ' ': # Miss
                     gamelogic[rowX][colX] = 'X'
@@ -269,8 +299,21 @@ class HardComputer(EasyComputer):
                          # Add *new* adjacent targets based on the *current* hit and pattern
                          self.add_adjacent_targets(current_hit, gamelogic, self.attack_pattern)
 
+                from game_logic import checkAndNotifyDestroyedShip, get_ship_at_coord
+                destroyed_ship = checkAndNotifyDestroyedShip(grid_coords, gamelogic, enemy_fleet, message_boxes_list)
 
-                    # --- Check for Sunk Ship ---
+                if destroyed_ship:
+                    # Ship sunk! Clear hunting state and remove its cells from target list
+                    self.hunting_mode = False
+                    self.last_hit = None
+                    self.attack_pattern = []
+                    # Find all cells of the sunk ship
+                    ship_cells = get_ship_at_coord(grid_coords, enemy_fleet, rowX, colX, gamelogic, sunk_check=True)
+                    if ship_cells:
+                        self.target_list = [(r, c) for r, c in self.target_list if (r, c) not in ship_cells]
+
+                    self.turn = True # Continue turn
+                    return True, True # Attack made, turn continues
 
                 elif cell_state == ' ': # --- MISS ---
                     gamelogic[rowX][colX] = 'X'
@@ -278,9 +321,6 @@ class HardComputer(EasyComputer):
                     tokens_list.append(Tokens(BLUETOKEN, cell_pos, 'Miss'))
                     if sounds.get('shot'): sounds['shot'].play()
                     if sounds.get('miss'): sounds['miss'].play()
-
-                    # If miss occurred while hunting, might help refine pattern or remove dead ends
-                    # (Target was already removed from list at the start)
 
                     self.turn = False # End turn
                     return True, False # Attack made, turn ends
