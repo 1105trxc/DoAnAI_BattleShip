@@ -1,350 +1,341 @@
-#  Module Imports
 import pygame
+import random
+import time
 
+# Import Modules and specific names needed
+import constants as C
+import utils
+# Import classes/functions directly for original calling style
+from game_objects import Ship, Guns, Tokens, MessageBox, Button
+from player import Player, EasyComputer, MediumComputer, HardComputer
+from board import createGameGrid # Chỉ cần createGameGrid từ board
+from game_logic import (
+    createGameLogic, updateGameLogic, printGameLogic, sortFleet,
+    randomizeShipPositions, resetShips, areShipsPlacedCorrectly,
+    deploymentPhase, takeTurns, checkForWinners, get_ship_at_coord # Thêm get_ship_at_coord nếu cần
+)
+from screens import updateGameScreen
 
-#  Module Initialization
+# --- Pygame Initialization ---
 pygame.init()
+pygame.mixer.init()
+pygame.font.init()
 
-
-#  Game Assets and Objects
-class Ship:
-    def __init__(self, name, img, pos, size, numGuns=0, gunPath=None, gunsize=None, gunCoordsOffset=None):
-        self.name = name
-        self.pos = pos
-        #  Load the Vertical image
-        self.vImage = loadImage(img, size)
-        self.vImageWidth = self.vImage.get_width()
-        self.vImageHeight = self.vImage.get_height()
-        self.vImageRect = self.vImage.get_rect()
-        self.vImageRect.topleft = pos
-        #  Load the Horizontal image
-        self.hImage = pygame.transform.rotate(self.vImage, -90)
-        self.hImageWidth = self.hImage.get_width()
-        self.hImageHeight = self.hImage.get_height()
-        self.hImageRect = self.hImage.get_rect()
-        self.hImageRect.topleft = pos
-        #  Image and Rectangle
-        self.image = self.vImage
-        self.rect = self.vImageRect
-        self.rotation = False
-        #  Ship is current selection
-        self.active = False
-        #  Load gun Images
-        self.gunslist = []
-        if numGuns > 0:
-            self.gunCoordsOffset = gunCoordsOffset
-            for num in range(numGuns):
-                self.gunslist.append(
-                    Guns(gunPath,
-                         self.rect.center,
-                         (size[0] * gunsize[0],
-                          size[1] * gunsize[1]),
-                         self.gunCoordsOffset[num])
-                )
-
-
-    def draw(self, window):
-        """Draw the ship to the screen"""
-        window.blit(self.image, self.rect)
-        for guns in self.gunslist:
-            guns.draw(window, self)
-
-
-class Guns:
-    def __init__(self, imgPath, pos, size, offset):
-        self.orig_image = loadImage(imgPath, size, True)
-        self.image = self.orig_image
-        self.offset = offset
-        self.rect = self.image.get_rect(center=pos)
-
-
-    def update(self, ship):
-        """Updating the Guns Positions on the ship"""
-        self.rect.center = (ship.rect.centerx, ship.rect.centery + (ship.image.get_height()//2 * self.offset))
-
-
-    def draw(self, window, ship):
-        self.update(ship)
-        window.blit(self.image, self.rect)
-
-
-#  Game Utility Functions
-def createGameGrid(rows, cols, cellsize, pos):
-    """Creates a game grid with coordinates for each cell"""
-    startX = pos[0]
-    startY = pos[1]
-    coordGrid = []
-    for row in range(rows):
-        rowX = []
-        for col in range(cols):
-            rowX.append((startX, startY))
-            startX += cellsize
-        coordGrid.append(rowX)
-        startX = pos[0]
-        startY += cellsize
-    return coordGrid
-
-
-def createGameLogic(rows, cols):
-    """Updates the game grid with logic, ie - spaces and X for ships"""
-    gamelogic = []
-    for row in range(rows):
-        rowX = []
-        for col in range(cols):
-            rowX.append(' ')
-        gamelogic.append(rowX)
-    return gamelogic
-
-
-def showGridOnScreen(window, cellsize, playerGrid, computerGrid):
-    """Draws the player and computer grids to the screen"""
-    gamegrids = [playerGrid, computerGrid]
-    for grid in gamegrids:
-        for row in grid:
-            for col in row:
-                pygame.draw.rect(window, (255, 255, 255), (col[0], col[1], cellsize, cellsize), 1)
-
-
-def printGameLogic():
-    """prints to the terminal the game logic"""
-    print('Player Grid'.center(50, '#'))
-    for _ in pGameLogic:
-        print(_)
-    print('Computer Grid'.center(50, '#'))
-    for _ in cGameLogic:
-        print(_)
-
-
-def loadImage(path, size, rotate=False):
-    """A function to import the images into memory"""
-    img = pygame.image.load(path).convert_alpha()
-    img = pygame.transform.scale(img, size)
-    if rotate == True:
-        img = pygame.transform.rotate(img, -90)
-    return img
-
-
-
-
-def updateGameScreen(window):
-    window.fill((0, 0, 0))
-
-    #  Draws the player and computer grids to the screen
-    showGridOnScreen(window, CELLSIZE, pGameGrid, cGameGrid)
-
-    #  Draw ships to screen
-    for ship in pFleet:
-        ship.draw(window)
-
-    pygame.display.update()
-
-
-#  Game Settings and Variables
-SCREENWIDTH = 1260
-SCREENHEIGHT = 960
-ROWS = 10
-COLS = 10
-CELLSIZE = 50
-
-
-#  Colors
-
-
-#  Pygame Display Initialization
-GAMESCREEN = pygame.display.set_mode((SCREENWIDTH, SCREENHEIGHT))
+# --- Screen Setup ---
+GAMESCREEN = pygame.display.set_mode((C.SCREENWIDTH, C.SCREENHEIGHT))
 pygame.display.set_caption('Battle Ship')
+clock = pygame.time.Clock()
+
+# --- Load Assets ---
+# (Giữ nguyên phần load assets từ phiên bản module hóa trước đó)
+MAINMENUIMAGE = utils.loadImage(C.MAINMENUIMAGE_PATH, (C.SCREENWIDTH, C.SCREENHEIGHT), alpha=False)
+ENDSCREENIMAGE = utils.loadImage(C.ENDSCREENIMAGE_PATH, (C.SCREENWIDTH, C.SCREENHEIGHT), alpha=False)
+BACKGROUND = utils.loadImage(C.BACKGROUND_PATH, (C.SCREENWIDTH, C.SCREENHEIGHT), alpha=False)
+PGAMEGRIDIMG = utils.loadImage(C.PGAMEGRIDIMG_PATH, ((C.ROWS + 1) * C.CELLSIZE, (C.COLS + 1) * C.CELLSIZE))
+CGAMEGRIDIMG = utils.loadImage(C.CGAMEGRIDIMG_PATH, ((C.ROWS + 1) * C.CELLSIZE, (C.COLS + 1) * C.CELLSIZE))
+BUTTONIMAGE = utils.loadImage(C.BUTTONIMAGE_PATH, (150, 50))
+BUTTONIMAGE1 = utils.loadImage(C.BUTTONIMAGE_PATH, (250, 100)) # Assuming path reuse ok
+BUTTONIMAGE_LG = pygame.transform.scale(BUTTONIMAGE, (150 + 10, 50 + 10))
+BUTTONIMAGE1_LG = pygame.transform.scale(BUTTONIMAGE1, (250 + 10, 100 + 10))
+REDTOKEN = utils.loadImage(C.REDTOKEN_PATH, (C.CELLSIZE, C.CELLSIZE))
+GREENTOKEN = utils.loadImage(C.GREENTOKEN_PATH, (C.CELLSIZE, C.CELLSIZE))
+BLUETOKEN = utils.loadImage(C.BLUETOKEN_PATH, (C.CELLSIZE, C.CELLSIZE))
+RADARGRID = utils.loadImage(C.RADARGRID_PATH, (C.ROWS * C.CELLSIZE, C.COLS * C.CELLSIZE))
+# Animations
+FIRETOKENIMAGELIST = utils.loadAnimationImages(C.FIRETOKEN_ANIM_PATH, 13, (C.CELLSIZE, C.CELLSIZE))
+try:
+    EXPLOSIONSPRITESHEET = pygame.image.load(C.EXPLOSIONSPRITESHEET_PATH).convert_alpha()
+    EXPLOSIONIMAGELIST = []
+    sheet_rows, sheet_cols = 8, 8; sprite_width, sprite_height = 128, 128
+    for row in range(sheet_rows):
+        for col in range(sheet_cols):
+            EXPLOSIONIMAGELIST.append(utils.loadSpriteSheetImages(EXPLOSIONSPRITESHEET, col, row, (C.CELLSIZE, C.CELLSIZE), (sprite_width, sprite_height)))
+except pygame.error as e: print(f"Error loading explosion spritesheet: {e}"); EXPLOSIONIMAGELIST = []
+# Sounds
+HITSOUND = utils.loadSound(C.HITSOUND_PATH, 0.05)
+SHOTSOUND = utils.loadSound(C.SHOTSOUND_PATH, 0.05)
+MISSSOUND = utils.loadSound(C.MISSSOUND_PATH, 0.05)
+SOUNDS = {'hit': HITSOUND, 'shot': SHOTSOUND, 'miss': MISSSOUND}
+
+# --- Game Object Initialization ---
+# Grids
+pGameGridCoords = createGameGrid(C.ROWS, C.COLS, C.CELLSIZE, (50, 50))
+pGameLogic = createGameLogic(C.ROWS, C.COLS)
+cGameGridCoords = createGameGrid(C.ROWS, C.COLS, C.CELLSIZE, (C.SCREENWIDTH - (C.COLS * C.CELLSIZE) - 50, 50)) # Adjusted X
+cGameLogic = createGameLogic(C.ROWS, C.COLS)
+
+# Fleets
+def createFleet(fleet_config, ship_class): # Helper stays same
+    fleet = []
+    for name, config in fleet_config.items():
+        fleet.append(ship_class(name, config[1], config[2], config[3], config[4], config[5], config[6], config[7]))
+    return fleet
+pFleet = createFleet(C.FLEET, Ship)
+cFleet = createFleet(C.FLEET, Ship)
+# Initial computer setup - CRITICAL FIX from before
+randomizeShipPositions(cFleet, cGameGridCoords)
+resetShips(cFleet, reset_position=False) # Use modified resetShips
+
+# Players
+player1 = Player()
+computer = EasyComputer()
+
+# Buttons
+BUTTONS = [
+    Button(BUTTONIMAGE, (150, 50), (25, 900), 'Randomize', BUTTONIMAGE_LG),
+    Button(BUTTONIMAGE, (150, 50), (200, 900), 'Reset', BUTTONIMAGE_LG),
+    Button(BUTTONIMAGE, (150, 50), (375, 900), 'Deploy', BUTTONIMAGE_LG),
+    Button(BUTTONIMAGE, (150, 50), (550, 900), 'Back to Main', BUTTONIMAGE_LG),
+    Button(BUTTONIMAGE1, (250, 100), (C.SCREENWIDTH - 300, C.SCREENHEIGHT // 2 - 150), 'Easy Computer', BUTTONIMAGE1_LG),
+    Button(BUTTONIMAGE1, (250, 100), (C.SCREENWIDTH - 300, C.SCREENHEIGHT // 2), 'Medium Computer', BUTTONIMAGE1_LG),
+    Button(BUTTONIMAGE1, (250, 100), (C.SCREENWIDTH - 300, C.SCREENHEIGHT // 2 + 150), 'Hard Computer', BUTTONIMAGE1_LG),
+    # No separate Quit button in original structure, it's Randomize changing name
+]
+
+# Game State Variables
+GAMESTATE = C.MAIN_MENU
+DEPLOYMENT = True
+# TURNTIMER is not explicitly used in the modular takeTurns, using lastComputerAttackTime
+lastComputerAttackTime = 0
+gameOverMessageShown = False
+winnerMessage = None
+TOKENS = []
+MESSAGE_BOXES = []
+active_ship = None
+STAGES = C.STAGE # Use STAGE from constants
+# Make ROWS/COLS available if original button logic needs them directly
+ROWS = C.ROWS
+COLS = C.COLS
+
+# --- Helper Function for Resetting Game ---
+# Ensure this function uses direct function calls and correct reset logic
+# --- Helper Function for Resetting Game ---
+def reset_game_for_new_round():
+    # <<< THÊM PRINT ĐẦU HÀM >>>
+    
+
+    global pFleet, cFleet, pGameLogic, cGameLogic, player1, computer, TOKENS, MESSAGE_BOXES
+    global DEPLOYMENT, GAMESTATE, gameOverMessageShown, winnerMessage, active_ship, lastComputerAttackTime
+
+    # print("Resetting game for new round...") # Bỏ print thừa
+    TOKENS.clear()
+    MESSAGE_BOXES.clear()
+
+    resetShips(pFleet, reset_position=True)
+    randomizeShipPositions(cFleet, cGameGridCoords)
+    resetShips(cFleet, reset_position=False)
+
+    pGameLogic = createGameLogic(ROWS, COLS)
+    cGameLogic = createGameLogic(ROWS, COLS)
+    updateGameLogic(pGameGridCoords, pFleet, pGameLogic)
+    updateGameLogic(cGameGridCoords, cFleet, cGameLogic)
+
+    player1.turn = True
+    computer.turn = False
+
+    # <<< CHỈ ĐẶT STATE MỘT LẦN >>>
+    DEPLOYMENT = True
+    GAMESTATE = C.DEPLOYMENT_STATE # Luôn đặt về Deployment khi reset để chơi mới
+    # <<< KẾT THÚC THAY ĐỔI >>>
+
+    gameOverMessageShown = False
+    winnerMessage = None
+    active_ship = None
+    lastComputerAttackTime = pygame.time.get_ticks()
+    print(f"/!\\***** reset_game_for_new_round() FINISHED! New GAMESTATE={GAMESTATE}, DEPLOYMENT={DEPLOYMENT} *****/!\\")
 
 
-
-
-#  Loading Game Variables
-pGameGrid = createGameGrid(ROWS, COLS, CELLSIZE, (50, 50))
-pGameLogic = createGameLogic(ROWS, COLS)
-pFleet = createFleet()
-
-cGameGrid = createGameGrid(ROWS, COLS, CELLSIZE, (SCREENWIDTH - (ROWS * CELLSIZE), 50))
-cGameLogic = createGameLogic(ROWS, COLS)
-cFleet = None
-
-printGameLogic()
-#  Loading Game Sounds and Images
-
-
-#  Initialize Players
-
-
-#  Main Game Loop
+# --- Main Game Loop (Following Original Structure) ---
 RUNGAME = True
 while RUNGAME:
+    currentTime = pygame.time.get_ticks() # Get current time for AI logic
 
+    # --- Event Handling ---
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             RUNGAME = False
-
-    updateGameScreen(GAMESCREEN)
-
-pygame.quit()
-
-
-# Khởi tạo font một lần để tối ưu
-pygame.font.init() # Cần thiết nếu dùng font trước pygame.init() chính
-STENCIL_FONT_22 = pygame.font.SysFont('Stencil', 22)
-STENCIL_FONT_30 = pygame.font.SysFont('Stencil', 30)
-
-# Khởi tạo màu sắc
-WHITE = (255, 255, 255)
-RED = (255, 0, 0)
-BLACK = (0, 0, 0)
-BLUE = (0, 17, 167)
-MESSAGE_BG_COLOR = (50, 50, 50, 200)
-
-class Button:
-    def __init__(self, image, size, pos, msg, button_image_larger=None): # Allow passing larger image
-        self.name = msg
-        self.image = image # Should be the loaded pygame.Surface
-        # Create larger image if not provided
-        if button_image_larger:
-             self.imageLarger = button_image_larger
-        elif self.image:
-             self.imageLarger = pygame.transform.scale(self.image, (size[0] + 10, size[1] + 10))
-        else:
-             self.imageLarger = None # Handle case where image is None
-
-        if self.image:
-            self.rect = self.image.get_rect(topleft=pos)
-        else:
-            # Fallback rect if no image
-            self.rect = pygame.Rect(pos[0], pos[1], size[0], size[1])
-
-        self.active = False # Whether the button is currently enabled/clickable
-        self.msg = self.addText(msg)
-        self.msgRect = self.msg.get_rect(center=self.rect.center)
-
-
-    def addText(self, msg):
-        # Use the pre-loaded font
-        message = STENCIL_FONT_22.render(msg, 1, WHITE)
-        return message
-
-
-    def focusOnButton(self, window):
-        # Highlight button on mouse hover if active
-        if self.active and self.image and self.imageLarger: # Check images exist
+        elif event.type == pygame.MOUSEBUTTONDOWN:
             mouse_pos = pygame.mouse.get_pos()
-            if self.rect.collidepoint(mouse_pos):
-                # Center the larger image relative to the original rect's center
-                larger_rect = self.imageLarger.get_rect(center=self.rect.center)
-                window.blit(self.imageLarger, larger_rect)
-            else:
-                window.blit(self.image, self.rect)
-        elif self.active and self.image: # Draw normal image if no larger one
-             window.blit(self.image, self.rect)
-        # Optionally draw a simple rect if no image but active?
-        # elif self.active:
-        #     pygame.draw.rect(window, (100, 100, 100), self.rect) # Example grey rect
+            if event.button == 1: # Left Click
+                # --- Original Logic: Handle Ship Drag / Attack FIRST ---
+                if DEPLOYMENT == True:
+                    clicked_on_ship = False # Reset flag
+                    for ship in reversed(pFleet):
+                        if ship.rect.collidepoint(mouse_pos):
+                            # Original didn't check areShipsPlacedCorrectly here
+                            ship.active = True
+                            active_ship = ship
+                            sortFleet(ship, pFleet) # Direct call
+                            clicked_on_ship = True
+                            break
+                    # No 'else' needed here, button check happens after
+
+                else: # Not Deployment (Attack Phase)
+                    if player1.turn == True:
+                        # Check if click is NOT on a button before attacking
+                        is_button_click = False
+                        for button in BUTTONS:
+                             if button.active and button.rect.collidepoint(mouse_pos):
+                                 is_button_click = True
+                                 break
+                        if not is_button_click:
+                            attack_successful = player1.makeAttack( # Call MODULAR makeAttack
+                                cGameGridCoords, cGameLogic, cFleet, TOKENS, MESSAGE_BOXES, SOUNDS
+                            )
+                            if attack_successful and not player1.turn: # If player missed
+                                computer.turn = True
+                                lastComputerAttackTime = currentTime # Update timer
+
+                # --- Original Logic: ALWAYS Check Buttons AFTER ship/attack logic ---
+                button_action_handled_this_click = False # Prevent multiple button actions
+                for button in BUTTONS:
+                    if button.active and button.rect.collidepoint(mouse_pos) and not button_action_handled_this_click:
+                        # Determine actual action name based on state (Randomize/Quit)
+                        action = button.name
+                        if not DEPLOYMENT and action == 'Randomize': action = 'Quit'
+                        elif DEPLOYMENT and action == 'Quit': action = 'Randomize'
+                        # Similar logic for Reset/Redeploy if name changes
+                        # elif not DEPLOYMENT and action == 'Reset': action = 'Redeploy'
+                        # elif DEPLOYMENT and action == 'Redeploy': action = 'Reset'
+
+                        print(f"Button Clicked: {action}") # DEBUG using determined action
+
+                        # --- Handle Specific Button Actions Directly (like original) ---
+                        if action == 'Deploy': # Only active when DEPLOYMENT is True
+                            if areShipsPlacedCorrectly(pFleet, pGameGridCoords):
+                                status = deploymentPhase(DEPLOYMENT) # False
+                                DEPLOYMENT = status
+                                player1.turn = True; computer.turn = False
+                                lastComputerAttackTime = currentTime
+                                updateGameLogic(pGameGridCoords, pFleet, pGameLogic)
+                                updateGameLogic(cGameGridCoords, cFleet, cGameLogic)
+                                print("--- Deployment Complete ---")
+                                printGameLogic(pGameLogic, cGameLogic)
+                                button_action_handled_this_click = True
+                            else:
+                                MESSAGE_BOXES.append(MessageBox("Please set up ship's position!", duration=2000))
+                                button_action_handled_this_click = True # Action attempted
+
+                        elif action == 'Redeploy': # Only active when DEPLOYMENT is False
+                            print("Handling Redeploy (Resetting Game)...")
+                            reset_game_for_new_round() # Reset the whole game
+                            # reset_game_for_new_round sets GAMESTATE to DEPLOYMENT_STATE
+                            button_action_handled_this_click = True
+
+                        elif action == 'Quit': # Only active when DEPLOYMENT is False
+                            print("Handling Quit...")
+                            RUNGAME = False
+                            button_action_handled_this_click = True
+
+                        elif action in ['Easy Computer', 'Medium Computer', 'Hard Computer']:
+                            # Only truly matters in Main Menu or Game Over state
+                            if GAMESTATE == C.MAIN_MENU or GAMESTATE == C.GAME_OVER:
+                                if action == 'Easy Computer': computer = EasyComputer()
+                                elif action == 'Medium Computer': computer = MediumComputer()
+                                elif action == 'Hard Computer': computer = HardComputer()
+                                print(f"Selected AI: {computer.name}")
+                                reset_game_for_new_round() # Start new game
+                                button_action_handled_this_click = True
+                            # If clicked during Deploy/Attack, do nothing for AI buttons
+
+                        # --- Call actionOnPress() for remaining buttons (like original) ---
+                        # This assumes 'Randomize', 'Reset', 'Back to Main' logic
+                        # is primarily handled within the actionOnPress method of the Button class.
+                        # You MUST ensure the Button.actionOnPress method in game_objects.py
+                        # is correctly implemented and receives necessary parameters if needed.
+                        if not button_action_handled_this_click:
+                             print(f"Calling actionOnPress for: {action}") # DEBUG
+                             # button.actionOnPress() # <<< ORIGINAL CALL
+                             # Or, handle directly here if actionOnPress is not implemented fully:
+                             if action == 'Randomize': # Only active when DEPLOYMENT is True
+                                 if DEPLOYMENT:
+                                     randomizeShipPositions(pFleet, pGameGridCoords)
+                                     updateGameLogic(pGameGridCoords, pFleet, pGameLogic)
+                                     button_action_handled_this_click = True
+                             elif action == 'Reset': # Only active when DEPLOYMENT is True
+                                 if DEPLOYMENT:
+                                     resetShips(pFleet, reset_position=True)
+                                     updateGameLogic(pGameGridCoords, pFleet, pGameLogic)
+                                     button_action_handled_this_click = True
+                             elif action == 'Back to Main':
+                                 # Should work in Deployment, Attack, Game Over
+                                 GAMESTATE = C.MAIN_MENU
+                                 DEPLOYMENT = True
+                                 reset_game_for_new_round() # Reset game state fully
+                                 GAMESTATE = C.MAIN_MENU      # Ensure state is Main Menu
+                                 button_action_handled_this_click = True
+
+                        # Break from button loop once one is handled
+                        if button_action_handled_this_click:
+                             break
 
 
-    # actionOnPress now needs arguments or needs main loop to handle actions
-    # Option 1: Return action name (preferred)
-    def get_action_on_press(self):
-         if self.active and self.rect.collidepoint(pygame.mouse.get_pos()):
-              # Return the name/action identifier
-              return self.name
-         return None
+            elif event.button == 2: # Middle Click
+                printGameLogic(pGameLogic, cGameLogic) # Direct call
+
+            elif event.button == 3: # Right Click
+                if DEPLOYMENT == True: # Only rotate during deployment
+                    for ship in pFleet:
+                        if ship.rect.collidepoint(mouse_pos):
+                            if not ship.checkForRotateCollisions([s for s in pFleet if s is not ship]):
+                                ship.rotateShip(True)
+                            else:
+                                MESSAGE_BOXES.append(MessageBox("Cannot rotate: Collision!", duration=1500))
+                            break # Only rotate one ship
+
+        elif event.type == pygame.MOUSEBUTTONUP:
+            if event.button == 1 and DEPLOYMENT == True:
+                if active_ship:
+                    collision = active_ship.checkForCollisions([s for s in pFleet if s is not active_ship])
+                    if not collision:
+                        active_ship.snapToGrid(pGameGridCoords)  # Gọi snapToGrid để căn chỉnh
+                        active_ship.active = False
+                        updateGameLogic(pGameGridCoords, pFleet, pGameLogic)  # Cập nhật lưới logic
+                    else:
+                        active_ship.active = False
+                        MESSAGE_BOXES.append(MessageBox("Ships cannot overlap!", duration=2000))
+                        active_ship.returnToDefaultPosition()  # Trả về vị trí mặc định nếu va chạm
+                    active_ship = None
 
 
-    def updateButtons(self, current_deployment_status):
-        # Updates button text based on deployment status
-        original_name = self.name # Store original if needed for logic
-        updated = False
-        if original_name == 'Deploy' and not current_deployment_status:
-            self.name = 'Redeploy'
-            updated = True
-        elif original_name == 'Redeploy' and current_deployment_status:
-            self.name = 'Deploy'
-            updated = True
+    # --- Game Logic Updates (Outside Event Loop) ---
+    # Ship Movement (Dragging) - Only if Deployment is True
+    if DEPLOYMENT == True:
+        if active_ship and active_ship.active:
+            active_ship.selectShipAndMove()
+            active_ship.snapToGridEdge(pGameGridCoords) # Original had snap edge during drag
 
-        if original_name == 'Randomize' and not current_deployment_status:
-            self.name = 'Quit' # Or maybe 'Main Menu'? Quit seems drastic here.
-            updated = True
-        elif original_name == 'Quit' and current_deployment_status:
-             self.name = 'Randomize'
-             updated = True
+    # --- Drawing --- (BEFORE Attack Phase Logic - like original)
+    assets_dict = { 'backgrounds': { 'main_menu': MAINMENUIMAGE, 'game': BACKGROUND, 'end_screen': ENDSCREENIMAGE, }, 'grid_images': { 'player': PGAMEGRIDIMG, 'computer': CGAMEGRIDIMG, 'radar': RADARGRID, }, 'buttons': BUTTONS, 'sounds': SOUNDS, 'tokens': {'red': REDTOKEN, 'green': GREENTOKEN, 'blue': BLUETOKEN} }
+    game_data_dict = { 'pFleet': pFleet, 'cFleet': cFleet, 'pGameGridCoords': pGameGridCoords, 'cGameGridCoords': cGameGridCoords, 'pGameLogic': pGameLogic, 'cGameLogic': cGameLogic, 'player1': player1, 'computer': computer, 'tokens_list': TOKENS, 'message_boxes_list': MESSAGE_BOXES, 'deployment_status': DEPLOYMENT, 'winner_message': winnerMessage, }
+    updateGameScreen(GAMESCREEN, GAMESTATE, assets_dict, game_data_dict)
 
-        if updated: # Only update text if name changed
-            self.msg = self.addText(self.name)
-            self.msgRect = self.msg.get_rect(center=self.rect.center)
+    # --- Attack Phase Turn Logic & AI --- (AFTER Drawing - like original)
+    if not DEPLOYMENT and GAMESTATE == C.DEPLOYMENT_STATE: # Check if in Attack Phase
+        player1Wins = checkForWinners(cGameLogic)
+        computerWins = checkForWinners(pGameLogic)
 
+        if player1Wins or computerWins: # Check win condition
+            GAMESTATE = C.GAME_OVER # Set state to Game Over
+            if player1Wins: winnerMessage = "PLAYER 1 WINS!"
+            else: winnerMessage = f"{computer.name.upper()} WINS!"
+            if not gameOverMessageShown:
+                 MESSAGE_BOXES.append(MessageBox(winnerMessage, duration=4000))
+                 gameOverMessageShown = True
+        else: # Game continues, handle turns
+             if computer.turn:
+                 # Call modular takeTurns which handles computer's attack
+                 lastComputerAttackTime = takeTurns(
+                     player1, computer,
+                     pGameLogic, pGameGridCoords, pFleet,
+                     cGameLogic, cGameGridCoords, cFleet,
+                     TOKENS, MESSAGE_BOXES, SOUNDS,
+                     currentTime, lastComputerAttackTime
+                 )
+             # No need for extra computer.makeAttack call here if takeTurns handles it
 
-    def draw(self, window, current_deployment_status):
-         # Update button state/text if needed (e.g., Deploy/Redeploy)
-         self.updateButtons(current_deployment_status)
-         # Draw the button visual (handling hover)
-         self.focusOnButton(window)
-         # Draw the text on top
-         window.blit(self.msg, self.msgRect)
+    # --- Frame Rate Control ---
+    clock.tick(60)
 
-
-
-class Tokens:
-    def __init__(self, image_surface, pos, action, imageList=None, explosionList=None, soundFile=None):
-        self.image = image_surface # Expecting a loaded pygame.Surface
-        self.rect = self.image.get_rect(topleft=pos) if self.image else pygame.Rect(pos[0],pos[1],0,0)
-        self.pos = pos # Store original top-left for reference
-        self.imageList = imageList if imageList else [] # Fire animation
-        self.explosionList = explosionList if explosionList else [] # Explosion animation
-        self.action = action # 'Hit', 'Miss'
-        # self.soundFile = soundFile # Sound handled in main loop now
-        self.timer = pygame.time.get_ticks()
-        self.imageIndex = 0 # Index for fire animation
-        self.explosionIndex = 0 # Index for explosion animation
-        self.explosion_finished = False # Flag if explosion animation is done
-
-
-    def animate_Explosion(self):
-        # Plays explosion animation once, then switches to fire
-        if not self.explosion_finished and self.explosionIndex < len(self.explosionList):
-             # Advance frame (consider timing)
-             # Simple frame-by-frame for now
-             img = self.explosionList[self.explosionIndex]
-             self.explosionIndex += 1
-             return img
-        else:
-             self.explosion_finished = True
-             return self.animate_fire()
-
-
-    def animate_fire(self):
-        # Loops the fire animation
-        if not self.imageList: # If no fire animation, return current static image
-            return self.image
-
-        # Update frame based on timer
-        now = pygame.time.get_ticks()
-        if now - self.timer >= 100: # 100ms per frame
-            self.timer = now
-            self.imageIndex = (self.imageIndex + 1) % len(self.imageList) # Loop index
-
-        return self.imageList[self.imageIndex]
-
-
-    def draw(self, window):
-        if not self.image: return # Don't draw if no image
-
-        display_image = None
-        if self.action == 'Hit':
-             if self.explosionList and not self.explosion_finished:
-                  display_image = self.animate_Explosion()
-             elif self.imageList:
-                  display_image = self.animate_fire()
-             else:
-                  display_image = self.image # Fallback to static hit token
-        else: # Miss or other actions
-            display_image = self.image
-
-        if display_image:
-             # Adjust position slightly for animations (like the original code)
-             temp_rect = display_image.get_rect(topleft=self.pos)
-             if self.action == 'Hit' and (self.imageList or self.explosionList):
-                  temp_rect.top = self.pos[1] - 10 # Move up slightly for fire/explosion
-             window.blit(display_image, temp_rect)
+# --- Quit Pygame ---
+pygame.quit()
