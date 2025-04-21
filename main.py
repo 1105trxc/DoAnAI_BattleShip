@@ -107,7 +107,6 @@ COLS = C.COLS
 
 # --- Helper Function for Resetting Game ---
 def reset_game_for_new_round():
-    # <<< THÊM PRINT ĐẦU HÀM >>>
     
 
     global pFleet, cFleet, pGameLogic, cGameLogic, player1, computer, TOKENS, MESSAGE_BOXES
@@ -138,7 +137,6 @@ def reset_game_for_new_round():
     winnerMessage = None
     active_ship = None
     lastComputerAttackTime = pygame.time.get_ticks()
-    print(f"/!\\***** reset_game_for_new_round() FINISHED! New GAMESTATE={GAMESTATE}, DEPLOYMENT={DEPLOYMENT} *****/!\\")
 
 
 # --- Main Game Loop (Following Original Structure) ---

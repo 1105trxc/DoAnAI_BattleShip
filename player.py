@@ -220,7 +220,7 @@ class HardComputer(EasyComputer):
         self.attack_pattern = [] # Stores pattern (e.g., 'horizontal', 'vertical') if detected
 
     def makeAttack(self, gamelogic, grid_coords, enemy_fleet, tokens_list, message_boxes_list, sounds, current_time, last_attack_time):
-        attack_delay = 800 # Harder AI attacks slightly faster
+        attack_delay = 1000 # Harder AI attacks slightly faster
 
         if current_time - last_attack_time >= attack_delay:
             rows = len(gamelogic)
