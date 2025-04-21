@@ -128,128 +128,87 @@ class EasyComputer:
 class MediumComputer(EasyComputer):
     def __init__(self):
         super().__init__()
-        self.name = 'Medium Computer (Greedy)'
+        self.name = 'Medium Computer'
+        self.hits = []  # các ô đã trúng nhưng tàu chưa chìm
+
+    def score_cell(self, r, c, gamelogic, rows, cols):
+        """Tính điểm Greedy cho một ô (ưu tiên gần các ô trúng)"""
+        if gamelogic[r][c] not in [' ', 'O']:
+            return -1  # đã đánh rồi
+
+        score = 0
+
+        # Tăng điểm nếu ô này gần ô đã trúng
+        for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < rows and 0 <= nc < cols:
+                if gamelogic[nr][nc] == 'T':
+                    score += 3  # càng gần ô trúng càng tốt
+                elif gamelogic[nr][nc] in [' ', 'O']:
+                    score += 1  # lân cận ô chưa đánh
+
+        return score
 
     def makeAttack(self, gamelogic, grid_coords, enemy_fleet, tokens_list, message_boxes_list, sounds, current_time, last_attack_time):
-        attack_delay = 1000
+        import random
+        from main import REDTOKEN, BLUETOKEN, FIRETOKENIMAGELIST, EXPLOSIONIMAGELIST
+        from game_logic import checkAndNotifyDestroyedShip, get_ship_at_coord
 
+        attack_delay = 1000
         if current_time - last_attack_time < attack_delay:
             return False, self.turn
 
-        rows = len(gamelogic)
-        cols = len(gamelogic[0])
-        target_coord = None
+        rows, cols = len(gamelogic), len(gamelogic[0])
 
-        prob_map = [[0 for _ in range(cols)] for _ in range(rows)]
-        unsunk_ships = [ship for ship in enemy_fleet if hasattr(ship, 'is_sunk') and not ship.is_sunk]
-
-        for ship in unsunk_ships:
-            try:
-                 from constants import CELLSIZE
-                 ship_h_len_cells = (ship.hImageWidth + CELLSIZE - 1) // CELLSIZE
-                 ship_v_len_cells = (ship.vImageHeight + CELLSIZE - 1) // CELLSIZE
-            except NameError:
-                 print("Error: CELLSIZE not defined. Cannot calculate probability map.")
-                 ship_h_len_cells = 1
-                 ship_v_len_cells = 1
-
-            length_cells = ship_h_len_cells
-            if cols >= length_cells and length_cells > 0:
-                for r in range(rows):
-                    for c_start in range(cols - length_cells + 1):
-                        is_valid_placement = True
-                        for i in range(length_cells):
-                            cell_r, cell_c = r, c_start + i
-                            if not (0 <= cell_r < rows and 0 <= cell_c < cols):
-                                is_valid_placement = False
-                                break
-                            if gamelogic[cell_r][cell_c] == 'X':
-                                is_valid_placement = False
-                                break
-
-                        if is_valid_placement:
-                            for i in range(length_cells):
-                                cell_r, cell_c = r, c_start + i
-                                prob_map[cell_r][cell_c] += 1
-
-            length_cells = ship_v_len_cells
-            if rows >= length_cells and length_cells > 0:
-                for c in range(cols):
-                    for r_start in range(rows - length_cells + 1):
-                        is_valid_placement = True
-                        for i in range(length_cells):
-                            cell_r, cell_c = r_start + i, c
-                            if not (0 <= cell_r < rows and 0 <= cell_c < cols):
-                                is_valid_placement = False
-                                break
-                            if gamelogic[cell_r][cell_c] == 'X':
-                                is_valid_placement = False
-                                break
-
-                        if is_valid_placement:
-                             for i in range(length_cells):
-                                cell_r, cell_c = r_start + i, c
-                                prob_map[cell_r][cell_c] += 1
-
-        max_prob = 0
-        best_cells = []
-
+        # Tính điểm cho tất cả các ô
+        scored_cells = []
         for r in range(rows):
             for c in range(cols):
-                 if gamelogic[r][c] in [' ', 'O']:
-                     if prob_map[r][c] > max_prob:
-                         max_prob = prob_map[r][c]
-                         best_cells = [(r, c)]
-                     elif prob_map[r][c] == max_prob and max_prob > 0:
-                          best_cells.append((r, c))
-                     elif max_prob == 0 and prob_map[r][c] > 0:
-                          max_prob = prob_map[r][c]
-                          best_cells = [(r, c)]
+                score = self.score_cell(r, c, gamelogic, rows, cols)
+                if score > 0:
+                    scored_cells.append(((r, c), score))
 
-        if best_cells:
-             target_coord = random.choice(best_cells)
-        else:
-             validChoice = False
-             attempts = 0
-             max_attempts = rows * cols * 2
-             while not validChoice and attempts < max_attempts:
-                  rowX = random.randint(0, rows - 1)
-                  colX = random.randint(0, cols - 1)
-                  if gamelogic[rowX][colX] in [' ', 'O']:
-                      validChoice = True
-                      target_coord = (rowX, colX)
-                  attempts += 1
-
-        if target_coord:
-            rowX, colX = target_coord
-            cell_state = gamelogic[rowX][colX]
-            cell_pos = grid_coords[rowX][colX]
-
-            if cell_state == 'O':
-                gamelogic[rowX][colX] = 'T'
-                from main import REDTOKEN, FIRETOKENIMAGELIST, EXPLOSIONIMAGELIST
-                tokens_list.append(Tokens(REDTOKEN, cell_pos, 'Hit', FIRETOKENIMAGELIST, EXPLOSIONIMAGELIST))
-                if sounds.get('shot'): sounds['shot'].play()
-                if sounds.get('hit'): sounds['hit'].play()
-
-                from game_logic import checkAndNotifyDestroyedShip
-                checkAndNotifyDestroyedShip(grid_coords, gamelogic, enemy_fleet, message_boxes_list)
-
-                self.turn = True
-                return True, True
-
-            elif cell_state == ' ':
-                gamelogic[rowX][colX] = 'X'
-                from main import BLUETOKEN
-                tokens_list.append(Tokens(BLUETOKEN, cell_pos, 'Miss'))
-                if sounds.get('shot'): sounds['shot'].play()
-                if sounds.get('miss'): sounds['miss'].play()
-
-                self.turn = False
-                return True, False
-        else:
+        if not scored_cells:
             self.turn = False
             return False, False
+
+        # Chọn ô có điểm cao nhất
+        max_score = max(score for (_, score) in scored_cells)
+        best_choices = [coord for coord, score in scored_cells if score == max_score]
+        target_coord = random.choice(best_choices)
+
+        rowX, colX = target_coord
+        cell_state = gamelogic[rowX][colX]
+        cell_pos = grid_coords[rowX][colX]
+
+        if cell_state == 'O':  # Hit
+            gamelogic[rowX][colX] = 'T'
+            tokens_list.append(Tokens(REDTOKEN, cell_pos, 'Hit', FIRETOKENIMAGELIST, EXPLOSIONIMAGELIST))
+            if sounds.get('shot'): sounds['shot'].play()
+            if sounds.get('hit'): sounds['hit'].play()
+            self.hits.append((rowX, colX))
+
+            destroyed_ship = checkAndNotifyDestroyedShip(grid_coords, gamelogic, enemy_fleet, message_boxes_list)
+            if destroyed_ship:
+                ship_cells = get_ship_at_coord(grid_coords, enemy_fleet, rowX, colX, gamelogic)
+                if ship_cells:
+                    self.hits = [(r, c) for r, c in self.hits if (r, c) not in ship_cells]
+
+            self.turn = True
+            return True, True
+
+        elif cell_state == ' ':
+            gamelogic[rowX][colX] = 'X'
+            tokens_list.append(Tokens(BLUETOKEN, cell_pos, 'Miss'))
+            if sounds.get('shot'): sounds['shot'].play()
+            if sounds.get('miss'): sounds['miss'].play()
+            self.turn = False
+            return True, False
+
+        # Không thể đánh vào ô này
+        self.turn = False
+        return False, False
+
 
 class HardComputer(EasyComputer):
     def __init__(self):
