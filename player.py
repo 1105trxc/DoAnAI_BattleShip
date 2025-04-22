@@ -214,138 +214,172 @@ class HardComputer(EasyComputer):
     def __init__(self):
         super().__init__()
         self.name = 'Hard Computer'
-        self.target_list = [] # List of coordinates to attack (priority) [(r,c), ...]
-        self.hunting_mode = False # Are we currently focused on sinking a found ship?
-        self.last_hit = None # Coordinates of the most recent successful hit (r, c)
-        self.attack_pattern = [] # Stores pattern (e.g., 'horizontal', 'vertical') if detected
+        self.target_list = []
+        self.hunting_mode = False
+        self.last_hit_coords = None
+        self.initial_hit_coords = None
+        self.determined_pattern = None
 
     def makeAttack(self, gamelogic, grid_coords, enemy_fleet, tokens_list, message_boxes_list, sounds, current_time, last_attack_time):
-        attack_delay = 1000 # Harder AI attacks slightly faster
+        attack_delay = 800
 
-        if current_time - last_attack_time >= attack_delay:
-            rows = len(gamelogic)
-            cols = len(gamelogic[0])
+        if current_time - last_attack_time < attack_delay:
+            return False, self.turn
 
-            target_coord = None
+        rows = len(gamelogic)
+        cols = len(gamelogic[0])
+        target_coord = None
 
-            # ** Priority 1: Attack from Target List (Hunting Mode) **
-            if self.target_list:
-                target_coord = self.target_list.pop(0) # Get the next priority target
-                # Sanity check if the target is still valid
-                if not (0 <= target_coord[0] < rows and 0 <= target_coord[1] < cols and gamelogic[target_coord[0]][target_coord[1]] in [' ', 'O']):
-                    target_coord = None # Invalid target, try next logic
-                    self.hunting_mode = bool(self.target_list) # Stay hunting if list not empty
+        self.target_list = [
+            (r, c) for r, c in self.target_list
+            if 0 <= r < rows and 0 <= c < cols and gamelogic[r][c] in [' ', 'O']
+        ]
 
-            # ** Priority 2: Random Attack (Searching Mode) **
-            if not target_coord:
-                self.hunting_mode = False # Switch off hunting mode if target list exhausted or empty
-                self.last_hit = None
-                self.attack_pattern = []
-                validChoice = False
-                attempts = 0
-                max_attempts = rows * cols * 2
-                while not validChoice and attempts < max_attempts:
-                    rowX = random.randint(0, rows - 1)
-                    colX = random.randint(0, cols - 1)
-                    if gamelogic[rowX][colX] in [' ', 'O']:
-                        validChoice = True # Simpler random for now
-                        target_coord = (rowX, colX)
+        if self.target_list:
+            target_coord = self.target_list.pop(0)
+            self.hunting_mode = True
 
-                    attempts += 1
+        if not target_coord:
+            self.hunting_mode = False
+            self.last_hit_coords = None
+            self.initial_hit_coords = None
+            self.determined_pattern = None
 
+            validChoice = False
+            attempts = 0
+            max_attempts = rows * cols * 2
+            while not validChoice and attempts < max_attempts:
+                rowX = random.randint(0, rows - 1)
+                colX = random.randint(0, cols - 1)
+                if gamelogic[rowX][colX] in [' ', 'O']:
+                    validChoice = True
+                    target_coord = (rowX, colX)
+                attempts += 1
 
-            # ** Process the chosen target_coord **
-            if target_coord:
-                rowX, colX = target_coord
-                cell_state = gamelogic[rowX][colX]
-                cell_pos = grid_coords[rowX][colX]
-
-                if cell_state == 'O': # --- HIT ---
-                    gamelogic[rowX][colX] = 'T'
-                    from main import REDTOKEN, FIRETOKENIMAGELIST, EXPLOSIONIMAGELIST
-                    tokens_list.append(Tokens(REDTOKEN, cell_pos, 'Hit', FIRETOKENIMAGELIST, EXPLOSIONIMAGELIST))
-                    if sounds.get('shot'): sounds['shot'].play()
-                    if sounds.get('hit'): sounds['hit'].play()
-
-                    current_hit = (rowX, colX)
-
-                    # --- Update Targeting Logic ---
-                    if not self.hunting_mode: # First hit on a new ship
-                        self.hunting_mode = True
-                        self.last_hit = current_hit
-                        # Add adjacent cells to target list
-                        self.add_adjacent_targets(current_hit, gamelogic)
-                    else: # Subsequent hit while hunting
-                         # Try to determine pattern (horizontal/vertical)
-                         if self.last_hit:
-                             dr = current_hit[0] - self.last_hit[0]
-                             dc = current_hit[1] - self.last_hit[1]
-                             if dr != 0 and dc == 0 and 'vertical' not in self.attack_pattern:
-                                 self.attack_pattern.append('vertical')
-                                 # Remove horizontal targets if pattern confirmed vertical
-                                 self.target_list = [(r,c) for r,c in self.target_list if c == self.last_hit[1]]
-                             elif dc != 0 and dr == 0 and 'horizontal' not in self.attack_pattern:
-                                 self.attack_pattern.append('horizontal')
-                                 # Remove vertical targets if pattern confirmed horizontal
-                                 self.target_list = [(r,c) for r,c in self.target_list if r == self.last_hit[0]]
-
-                         self.last_hit = current_hit
-                         # Add *new* adjacent targets based on the *current* hit and pattern
-                         self.add_adjacent_targets(current_hit, gamelogic, self.attack_pattern)
-
-                from game_logic import checkAndNotifyDestroyedShip, get_ship_at_coord
-                destroyed_ship = checkAndNotifyDestroyedShip(grid_coords, gamelogic, enemy_fleet, message_boxes_list)
-
-                if destroyed_ship:
-                    # Ship sunk! Clear hunting state and remove its cells from target list
-                    self.hunting_mode = False
-                    self.last_hit = None
-                    self.attack_pattern = []
-                    # Find all cells of the sunk ship
-                    ship_cells = get_ship_at_coord(grid_coords, enemy_fleet, rowX, colX, gamelogic, sunk_check=True)
-                    if ship_cells:
-                        self.target_list = [(r, c) for r, c in self.target_list if (r, c) not in ship_cells]
-
-                    self.turn = True # Continue turn
-                    return True, True # Attack made, turn continues
-
-                elif cell_state == ' ': # --- MISS ---
-                    gamelogic[rowX][colX] = 'X'
-                    from main import BLUETOKEN
-                    tokens_list.append(Tokens(BLUETOKEN, cell_pos, 'Miss'))
-                    if sounds.get('shot'): sounds['shot'].play()
-                    if sounds.get('miss'): sounds['miss'].play()
-
-                    self.turn = False # End turn
-                    return True, False # Attack made, turn ends
-            else:
-                 # No valid cell found / No target generated
+            if not validChoice:
                  self.turn = False
                  return False, False
 
-        return False, self.turn # Timer delay
+        rowX, colX = target_coord
+        cell_state = gamelogic[rowX][colX]
+        cell_pos = grid_coords[rowX][colX]
 
-    def add_adjacent_targets(self, hit_coord, gamelogic, pattern=None):
-        """Adds valid adjacent cells to the target list based on pattern."""
+        if cell_state == 'O':
+            gamelogic[rowX][colX] = 'T'
+            from main import REDTOKEN, FIRETOKENIMAGELIST, EXPLOSIONIMAGELIST
+            tokens_list.append(Tokens(REDTOKEN, cell_pos, 'Hit', FIRETOKENIMAGELIST, EXPLOSIONIMAGELIST))
+            if sounds.get('shot'): sounds['shot'].play()
+            if sounds.get('hit'): sounds['hit'].play()
+
+            current_hit = (rowX, colX)
+
+            if not self.hunting_mode:
+                self.hunting_mode = True
+                self.initial_hit_coords = current_hit
+                self.last_hit_coords = current_hit
+                self.determined_pattern = None
+                self.add_potential_targets(current_hit, gamelogic, mode='adjacent')
+            else:
+                if self.determined_pattern is None and self.initial_hit_coords:
+                    if current_hit[0] == self.initial_hit_coords[0]:
+                        self.determined_pattern = 'horizontal'
+                    elif current_hit[1] == self.initial_hit_coords[1]:
+                        self.determined_pattern = 'vertical'
+
+                self.last_hit_coords = current_hit
+
+                if self.determined_pattern:
+                    self.add_potential_targets(current_hit, gamelogic, mode=self.determined_pattern, initial_hit=self.initial_hit_coords)
+                else:
+                     self.add_potential_targets(current_hit, gamelogic, mode='adjacent')
+
+            from game_logic import checkAndNotifyDestroyedShip, get_ship_at_coord
+            destroyed_ship = checkAndNotifyDestroyedShip(grid_coords, gamelogic, enemy_fleet, message_boxes_list)
+
+            if destroyed_ship:
+                self.hunting_mode = False
+                self.last_hit_coords = None
+                self.initial_hit_coords = None
+                self.determined_pattern = None
+                self.target_list.clear()
+
+            self.turn = True
+            return True, True
+
+        elif cell_state == ' ':
+            gamelogic[rowX][colX] = 'X'
+            from main import BLUETOKEN
+            tokens_list.append(Tokens(BLUETOKEN, cell_pos, 'Miss'))
+            if sounds.get('shot'): sounds['shot'].play()
+            if sounds.get('miss'): sounds['miss'].play()
+
+            self.turn = False
+            return True, False
+        else:
+             self.turn = False
+             return False, False
+
+
+    def add_potential_targets(self, hit_coord, gamelogic, mode='adjacent', initial_hit=None):
         r, c = hit_coord
         rows, cols = len(gamelogic), len(gamelogic[0])
-        potential_dirs = []
+        new_targets_to_add = []
 
-        if not pattern: # No pattern yet, check all 4 directions
+        if mode == 'adjacent':
             potential_dirs = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-        elif 'vertical' in pattern:
-             potential_dirs = [(-1, 0), (1, 0)] # Only check North/South
-        elif 'horizontal' in pattern:
-             potential_dirs = [(0, -1), (0, 1)] # Only check West/East
+            for dr, dc in potential_dirs:
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < rows and 0 <= nc < cols and gamelogic[nr][nc] in [' ', 'O']:
+                    new_target = (nr, nc)
+                    if new_target not in self.target_list and new_target not in new_targets_to_add:
+                        new_targets_to_add.append(new_target)
 
-        for dr, dc in potential_dirs:
-            nr, nc = r + dr, c + dc
-            if 0 <= nr < rows and 0 <= nc < cols and gamelogic[nr][nc] in [' ', 'O']:
-                new_target = (nr, nc)
-                if new_target not in self.target_list:
-                    # Add new targets to the FRONT of the list for depth-first like search
-                    self.target_list.insert(0, new_target)
+        elif mode == 'horizontal' and initial_hit:
+            all_hits_on_row = sorted([h for h in self.get_all_current_hits(gamelogic) if h[0] == r])
 
-    # Override draw to potentially show targeting state? (Optional)
-    def draw(self, window, grid_coords):
-         super().draw(window, grid_coords) # Draw basic status
+            if all_hits_on_row:
+                min_c = all_hits_on_row[0][1]
+                max_c = all_hits_on_row[-1][1]
+
+                nl, nc = r, min_c - 1
+                if 0 <= nc < cols and gamelogic[nl][nc] in [' ', 'O']:
+                    new_target = (nl, nc)
+                    if new_target not in self.target_list and new_target not in new_targets_to_add:
+                        new_targets_to_add.append(new_target)
+
+                nr, nc = r, max_c + 1
+                if 0 <= nc < cols and gamelogic[nr][nc] in [' ', 'O']:
+                    new_target = (nr, nc)
+                    if new_target not in self.target_list and new_target not in new_targets_to_add:
+                        new_targets_to_add.append(new_target)
+
+        elif mode == 'vertical' and initial_hit:
+            all_hits_on_col = sorted([h for h in self.get_all_current_hits(gamelogic) if h[1] == c])
+
+            if all_hits_on_col:
+                min_r = all_hits_on_col[0][0]
+                max_r = all_hits_on_col[-1][0]
+
+                nr, nc = min_r - 1, c
+                if 0 <= nr < rows and gamelogic[nr][nc] in [' ', 'O']:
+                    new_target = (nr, nc)
+                    if new_target not in self.target_list and new_target not in new_targets_to_add:
+                        new_targets_to_add.append(new_target)
+
+                nr, nc = max_r + 1, c
+                if 0 <= nr < rows and gamelogic[nr][nc] in [' ', 'O']:
+                    new_target = (nr, nc)
+                    if new_target not in self.target_list and new_target not in new_targets_to_add:
+                        new_targets_to_add.append(new_target)
+
+        for target in reversed(new_targets_to_add):
+            self.target_list.insert(0, target)
+
+    def get_all_current_hits(self, gamelogic):
+        hits = []
+        rows, cols = len(gamelogic), len(gamelogic[0])
+        for r in range(rows):
+            for c in range(cols):
+                if gamelogic[r][c] == 'T':
+                    hits.append((r, c))
+        return hits
