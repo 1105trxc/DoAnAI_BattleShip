@@ -203,7 +203,6 @@ while RUNGAME:
                                 printGameLogic(pGameLogic, cGameLogic)
                                 button_action_handled_this_click = True
                             else:
-                                MESSAGE_BOXES.append(MessageBox("Please set up ship's position!", duration=2000))
                                 button_action_handled_this_click = True # Action attempted
 
                         elif action == 'Redeploy': # Only active when DEPLOYMENT is False

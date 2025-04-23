@@ -57,14 +57,13 @@ class EasyComputer:
         self.status_font = pygame.font.SysFont('Stencil', 22)
         self.status_text = 'Thinking'
         self.name = 'Easy Computer'
-        self.destroyed_ship_cells = set()  # Lưu các ô thuộc tàu đã tiêu diệt
+        self.destroyed_ship_cells = set() 
 
     def computerStatus(self, msg):
         message = self.status_font.render(msg, 1, (0, 0, 0))
         return message
 
     def update_destroyed_ship_cells(self, destroyed_ship_cells):
-        """Cập nhật danh sách các ô thuộc tàu đã tiêu diệt"""
         self.destroyed_ship_cells.update(destroyed_ship_cells)
 
     def makeAttack(self, gamelogic, grid_coords, enemy_fleet, tokens_list, message_boxes_list, sounds, current_time, last_attack_time):
@@ -135,12 +134,12 @@ class MediumComputer(EasyComputer):
     def __init__(self):
         super().__init__()
         self.name = 'Medium Computer'
-        self.hits = []  # Các ô đã trúng nhưng tàu chưa chìm
-        self.destroyed_ship_cells = set()  # Lưu các ô thuộc tàu đã tiêu diệt
+        self.hits = [] 
+        self.destroyed_ship_cells = set()  
 
     def score_cell(self, r, c, gamelogic, rows, cols):
         if gamelogic[r][c] not in [' ', 'O'] or (r, c) in self.destroyed_ship_cells:
-            return -1  # Đã đánh hoặc thuộc tàu đã tiêu diệt
+            return -1  
 
         score = 0
 
@@ -221,11 +220,6 @@ class HardComputer(EasyComputer):
         self.last_hit_coords = None
         self.initial_hit_coords = None
         self.determined_pattern = None
-        self.destroyed_ship_cells = set()  # Lưu các ô thuộc tàu đã tiêu diệt
-
-    def update_destroyed_ship_cells(self, destroyed_ship_cells):
-        """Cập nhật danh sách các ô thuộc tàu đã tiêu diệt"""
-        self.destroyed_ship_cells.update(destroyed_ship_cells)
 
     def makeAttack(self, gamelogic, grid_coords, enemy_fleet, tokens_list, message_boxes_list, sounds, current_time, last_attack_time):
         attack_delay = 800
@@ -240,7 +234,6 @@ class HardComputer(EasyComputer):
         self.target_list = [
             (r, c) for r, c in self.target_list
             if 0 <= r < rows and 0 <= c < cols and gamelogic[r][c] in [' ', 'O']
-            and (r, c) not in self.destroyed_ship_cells
         ]
 
         if self.target_list:
@@ -259,14 +252,14 @@ class HardComputer(EasyComputer):
             while not validChoice and attempts < max_attempts:
                 rowX = random.randint(0, rows - 1)
                 colX = random.randint(0, cols - 1)
-                if gamelogic[rowX][colX] in [' ', 'O'] and (rowX, colX) not in self.destroyed_ship_cells:
+                if gamelogic[rowX][colX] in [' ', 'O']:
                     validChoice = True
                     target_coord = (rowX, colX)
                 attempts += 1
 
             if not validChoice:
-                self.turn = False
-                return False, False
+                 self.turn = False
+                 return False, False
 
         rowX, colX = target_coord
         cell_state = gamelogic[rowX][colX]
@@ -299,15 +292,12 @@ class HardComputer(EasyComputer):
                 if self.determined_pattern:
                     self.add_potential_targets(current_hit, gamelogic, mode=self.determined_pattern, initial_hit=self.initial_hit_coords)
                 else:
-                    self.add_potential_targets(current_hit, gamelogic, mode='adjacent')
+                     self.add_potential_targets(current_hit, gamelogic, mode='adjacent')
 
             from game_logic import checkAndNotifyDestroyedShip, get_ship_at_coord
             destroyed_ship = checkAndNotifyDestroyedShip(grid_coords, gamelogic, enemy_fleet, message_boxes_list)
 
             if destroyed_ship:
-                ship_cells = get_ship_at_coord(grid_coords, enemy_fleet, rowX, colX, gamelogic)
-                if ship_cells:
-                    self.update_destroyed_ship_cells(ship_cells)
                 self.hunting_mode = False
                 self.last_hit_coords = None
                 self.initial_hit_coords = None
@@ -327,8 +317,9 @@ class HardComputer(EasyComputer):
             self.turn = False
             return True, False
         else:
-            self.turn = False
-            return False, False
+             self.turn = False
+             return False, False
+
 
     def add_potential_targets(self, hit_coord, gamelogic, mode='adjacent', initial_hit=None):
         r, c = hit_coord
@@ -341,7 +332,7 @@ class HardComputer(EasyComputer):
                 nr, nc = r + dr, c + dc
                 if 0 <= nr < rows and 0 <= nc < cols and gamelogic[nr][nc] in [' ', 'O']:
                     new_target = (nr, nc)
-                    if new_target not in self.target_list and new_target not in new_targets_to_add and new_target not in self.destroyed_ship_cells:
+                    if new_target not in self.target_list and new_target not in new_targets_to_add:
                         new_targets_to_add.append(new_target)
 
         elif mode == 'horizontal' and initial_hit:
@@ -352,13 +343,13 @@ class HardComputer(EasyComputer):
                 max_c = all_hits_on_row[-1][1]
 
                 nl, nc = r, min_c - 1
-                if 0 <= nc < cols and gamelogic[nl][nc] in [' ', 'O'] and (nl, nc) not in self.destroyed_ship_cells:
+                if 0 <= nc < cols and gamelogic[nl][nc] in [' ', 'O']:
                     new_target = (nl, nc)
                     if new_target not in self.target_list and new_target not in new_targets_to_add:
                         new_targets_to_add.append(new_target)
 
                 nr, nc = r, max_c + 1
-                if 0 <= nc < cols and gamelogic[nr][nc] in [' ', 'O'] and (nr, nc) not in self.destroyed_ship_cells:
+                if 0 <= nc < cols and gamelogic[nr][nc] in [' ', 'O']:
                     new_target = (nr, nc)
                     if new_target not in self.target_list and new_target not in new_targets_to_add:
                         new_targets_to_add.append(new_target)
@@ -371,13 +362,13 @@ class HardComputer(EasyComputer):
                 max_r = all_hits_on_col[-1][0]
 
                 nr, nc = min_r - 1, c
-                if 0 <= nr < rows and gamelogic[nr][nc] in [' ', 'O'] and (nr, nc) not in self.destroyed_ship_cells:
+                if 0 <= nr < rows and gamelogic[nr][nc] in [' ', 'O']:
                     new_target = (nr, nc)
                     if new_target not in self.target_list and new_target not in new_targets_to_add:
                         new_targets_to_add.append(new_target)
 
                 nr, nc = max_r + 1, c
-                if 0 <= nr < rows and gamelogic[nr][nc] in [' ', 'O'] and (nr, nc) not in self.destroyed_ship_cells:
+                if 0 <= nr < rows and gamelogic[nr][nc] in [' ', 'O']:
                     new_target = (nr, nc)
                     if new_target not in self.target_list and new_target not in new_targets_to_add:
                         new_targets_to_add.append(new_target)
