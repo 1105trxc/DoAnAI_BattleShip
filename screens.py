@@ -1,11 +1,7 @@
-# Trong file screens.py
-
 import pygame # Đảm bảo pygame được import
 from constants import MAIN_MENU, DEPLOYMENT_STATE, GAME_OVER, WHITE, CELLSIZE # Import constants
 from utils import displayShipNames # Import utils
 from board import showGridOnScreen # Import board functions
-
-# ... (mainMenuScreen giữ nguyên) ...
 
 def mainMenuScreen(window, background_image, buttons):
     """Draws the Main Menu screen."""
@@ -19,7 +15,6 @@ def mainMenuScreen(window, background_image, buttons):
         else:
             button.active = False # Deactivate other buttons like Deploy, Reset etc.
 
-# === THAY THẾ HÀM deploymentScreen ===
 def deploymentScreen(window, background_image, pGameGridImg, cGameGridImg, radarGridImg,
                      pGameGridCoords, cGameGridCoords, pFleet, cFleet, buttons,
                      computer_player, tokens_list, current_deployment_status):
@@ -52,28 +47,23 @@ def deploymentScreen(window, background_image, pGameGridImg, cGameGridImg, radar
         elif current_deployment_status and button.name == 'Quit': effective_button_name = 'Randomize'
         elif not current_deployment_status and button.name == 'Deploy': effective_button_name = 'Redeploy'
         elif current_deployment_status and button.name == 'Redeploy': effective_button_name = 'Deploy'
-        # Reset không đổi tên theo yêu cầu
 
         is_button_active_in_this_state = False
         # Kích hoạt nút dựa trên trạng thái VÀ tên HIỆU QUẢ
         if current_deployment_status: # Đang Đặt Tàu
-            # Reset chỉ active khi Deploy
             if effective_button_name in ['Randomize', 'Reset', 'Deploy', 'Back to Main']:
                 is_button_active_in_this_state = True
         else: # Đang Tấn Công
-            # Redeploy, Quit, Back to Main active. Reset KHÔNG active.
             if effective_button_name in ['Redeploy', 'Quit', 'Back to Main']:
                 is_button_active_in_this_state = True
         # Các nút chọn AI không bao giờ active trong màn hình này
         if effective_button_name in ['Easy Computer', 'Medium Computer', 'Hard Computer']:
              is_button_active_in_this_state = False
 
-
         # Cập nhật trạng thái active của đối tượng nút
         button.active = is_button_active_in_this_state
 
         # Cập nhật tên và text nếu tên hiệu quả khác tên gốc lưu trong nút
-        # QUAN TRỌNG: Chỉ cập nhật nếu tên KHÁC NHAU để tránh render lại text liên tục
         if button.name != effective_button_name:
             button.name = effective_button_name
             button.msg = button.addText(button.name) # Render lại text
@@ -95,10 +85,12 @@ def endScreen(window, background_image, buttons, winner_message):
     """Draws the Game Over screen."""
     window.blit(background_image, (0, 0))
     for button in buttons:
-        if button.name in ['Easy Computer', 'Medium Computer', 'Hard Computer', 'Back to Main']:
+        # Kích hoạt các nút AI và nút "Quit" (đã đổi từ "Back to Main")
+        if button.name in ['Easy Computer', 'Medium Computer', 'Hard Computer', 'Quit']:
             button.active = True
             button.draw(window, False)
         else:
+            # Jewish font (for "Back to Main") is not properly handled in this state
             button.active = False
     if winner_message:
          font = pygame.font.SysFont('Stencil', 60)
@@ -115,9 +107,6 @@ def updateGameScreen(window, game_state, assets, game_data):
     cFleet = game_data['cFleet']
     pGameGridCoords = game_data['pGameGridCoords']
     cGameGridCoords = game_data['cGameGridCoords']
-    # pGameLogic = game_data['pGameLogic'] # Không dùng trực tiếp khi vẽ
-    # cGameLogic = game_data['cGameLogic'] # Không dùng trực tiếp khi vẽ
-    # player1 = game_data['player1'] # Không dùng trực tiếp khi vẽ
     computer = game_data['computer']
     tokens_list = game_data['tokens_list']
     message_boxes_list = game_data['message_boxes_list']
@@ -139,3 +128,6 @@ def updateGameScreen(window, game_state, assets, game_data):
              message_boxes_list.pop(i)
 
     pygame.display.update()
+    
+    
+    
