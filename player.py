@@ -211,176 +211,139 @@ class MediumComputer(EasyComputer):
         return False, False
 
 
-class HardComputer(EasyComputer):
+
+class HardComputer(EasyComputer): # Kế thừa từ EasyComputer
     def __init__(self):
         super().__init__()
         self.name = 'Hard Computer'
-        self.target_list = []
+        self.moves = []
+        self.target_list = [] 
         self.hunting_mode = False
         self.last_hit_coords = None
         self.initial_hit_coords = None
         self.determined_pattern = None
 
-    def makeAttack(self, gamelogic, grid_coords, enemy_fleet, tokens_list, message_boxes_list, sounds, current_time, last_attack_time):
-        attack_delay = 800
+    def generateMoves(self, coords, gamelogic, rows, cols):
+        r_start, c_start = coords
+        
+        stack = [(r_start, c_start)]
+        visited = {(r_start, c_start)} 
 
-        if current_time - last_attack_time < attack_delay:
-            return False, self.turn
+        self.moves.clear() 
+        
+        potential_targets = []
+        queue = [(r_start, c_start)] # Bắt đầu tìm kiếm từ điểm trúng ban đầu (T)
+        visited_search = {(r_start, c_start)} # Theo dõi các ô đã dùng để tìm kiếm lân cận
+
+        while queue:
+            curr_r, curr_c = queue.pop(0) # Lấy điểm hiện tại (có thể là 'T' hoặc 'O' đã được tìm thấy)
+
+            # Kiểm tra 4 hướng từ điểm hiện tại
+            for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nr, nc = curr_r + dr, curr_c + dc
+
+                # Kiểm tra nếu ô lân cận nằm trong biên và chưa được thăm trong quá trình tìm kiếm này
+                if 0 <= nr < rows and 0 <= nc < cols and (nr, nc) not in visited_search:
+                     visited_search.add((nr, nc)) # Đánh dấu đã thăm
+
+                     # Nếu ô lân cận là 'O' (chưa bắn nhưng có tàu)
+                     if gamelogic[nr][nc] == 'O':
+                          # Thêm ô 'O' này vào danh sách moves cần bắn
+                          if (nr, nc) not in self.moves: # Kiểm tra trùng lặp
+                              self.moves.append((nr, nc))
+                              # Thêm ô 'O' này vào queue để tìm kiếm các ô 'O' lân cận của nó (mở rộng vùng tìm kiếm trên tàu)
+                              queue.append((nr, nc))
+                     # Nếu ô lân cận là 'T' (điểm trúng khác của cùng tàu)
+                     elif gamelogic[nr][nc] == 'T':
+                          # Thêm ô 'T' này vào queue để tìm kiếm các ô 'O' lân cận của nó
+                          queue.append((nr, nc))
+                     # Nếu là ' ' hoặc 'X', dừng theo hướng này
+
+    def makeAttack(self, gamelogic, grid_coords, enemy_fleet, tokens_list, message_boxes_list, sounds, current_time, last_attack_time):
+        
+        attack_delay_hunt = 1000 # Độ trễ khi săn lùng (chưa có moves)
+        attack_delay_target = 500 # Độ trễ khi xả đạn vào moves đã có
+
+        current_attack_delay = attack_delay_target if self.moves else attack_delay_hunt
+        if current_time - last_attack_time < current_attack_delay:
+            return False, self.turn # Chưa đủ thời gian chờ
 
         rows = len(gamelogic)
         cols = len(gamelogic[0])
-        target_coord = None
+        target_coord = None # Tọa độ mục tiêu cuối cùng AI sẽ bắn (row, col)
 
-        self.target_list = [
-            (r, c) for r, c in self.target_list
-            if 0 <= r < rows and 0 <= c < cols and gamelogic[r][c] in [' ', 'O']
-        ]
+        if self.moves:
+            self.moves = [(r, c) for r, c in self.moves if 0 <= r < rows and 0 <= c < cols and gamelogic[r][c] in [' ', 'O']]
 
-        if self.target_list:
-            target_coord = self.target_list.pop(0)
-            self.hunting_mode = True
+            if self.moves:
+                # Lấy mục tiêu đầu tiên trong danh sách moves
+                target_coord = self.moves.pop(0)
 
         if not target_coord:
-            self.hunting_mode = False
-            self.last_hit_coords = None
-            self.initial_hit_coords = None
-            self.determined_pattern = None
-
             validChoice = False
             attempts = 0
-            max_attempts = rows * cols * 2
+            max_attempts = rows * cols * 2 # Failsafe limit
             while not validChoice and attempts < max_attempts:
                 rowX = random.randint(0, rows - 1)
                 colX = random.randint(0, cols - 1)
-                if gamelogic[rowX][colX] in [' ', 'O']:
+                if gamelogic[rowX][colX] in [' ', 'O']: # Chỉ bắn vào ô chưa bị bắn
                     validChoice = True
                     target_coord = (rowX, colX)
                 attempts += 1
 
             if not validChoice:
+                 # print("Expert AI: Random search failed - No target selected.") # Debugging
                  self.turn = False
-                 return False, False
-
+                 return False, False # Không tấn công được, kết thúc lượt
+            
         rowX, colX = target_coord
-        cell_state = gamelogic[rowX][colX]
-        cell_pos = grid_coords[rowX][colX]
+        cell_state = gamelogic[rowX][colX] # Lấy trạng thái hiện tại của ô
+        cell_pos = grid_coords[rowX][colX] # Lấy vị trí hình ảnh của ô
 
-        if cell_state == 'O':
-            gamelogic[rowX][colX] = 'T'
-            from main import REDTOKEN, FIRETOKENIMAGELIST, EXPLOSIONIMAGELIST
+        if cell_state == 'O': # Trúng tàu! (Hit) - Bao gồm cả khi bắn từ moves list
+            # print(f"Expert AI: HIT at ({rowX},{colX})!") # Debugging
+            gamelogic[rowX][colX] = 'T' # Cập nhật trạng thái ô trên lưới logic
+            # Tạo hiệu ứng và phát âm thanh trúng (sử dụng tham số)
+            from main import REDTOKEN, FIRETOKENIMAGELIST, EXPLOSIONIMAGELIST # Ensure imports are correct
             tokens_list.append(Tokens(REDTOKEN, cell_pos, 'Hit', FIRETOKENIMAGELIST, EXPLOSIONIMAGELIST))
             if sounds.get('shot'): sounds['shot'].play()
             if sounds.get('hit'): sounds['hit'].play()
 
-            current_hit = (rowX, colX)
+            self.generateMoves(target_coord, gamelogic, rows, cols)
 
-            if not self.hunting_mode:
-                self.hunting_mode = True
-                self.initial_hit_coords = current_hit
-                self.last_hit_coords = current_hit
-                self.determined_pattern = None
-                self.add_potential_targets(current_hit, gamelogic, mode='adjacent')
-            else:
-                if self.determined_pattern is None and self.initial_hit_coords:
-                    if current_hit[0] == self.initial_hit_coords[0]:
-                        self.determined_pattern = 'horizontal'
-                    elif current_hit[1] == self.initial_hit_coords[1]:
-                        self.determined_pattern = 'vertical'
-
-                self.last_hit_coords = current_hit
-
-                if self.determined_pattern:
-                    self.add_potential_targets(current_hit, gamelogic, mode=self.determined_pattern, initial_hit=self.initial_hit_coords)
-                else:
-                     self.add_potential_targets(current_hit, gamelogic, mode='adjacent')
-
-            from game_logic import checkAndNotifyDestroyedShip, get_ship_at_coord
+            # Kiểm tra tàu chìm sau khi xử lý hit
+            from game_logic import checkAndNotifyDestroyedShip, get_ship_at_coord # Ensure import is correct
             destroyed_ship = checkAndNotifyDestroyedShip(grid_coords, gamelogic, enemy_fleet, message_boxes_list)
 
             if destroyed_ship:
+                # Ship sunk! Reset hunting state related to *this* ship.
                 self.hunting_mode = False
                 self.last_hit_coords = None
                 self.initial_hit_coords = None
                 self.determined_pattern = None
-                self.target_list.clear()
 
-            self.turn = True
-            return True, True
+                sunk_ship_cells = []
+               
+                all_cells_of_sunk_ship = get_ship_at_coord(grid_coords, enemy_fleet, rowX, colX, gamelogic) # get_ship_at_coord trả về cells của ship tại (r,c) dựa trên rect
 
-        elif cell_state == ' ':
-            gamelogic[rowX][colX] = 'X'
-            from main import BLUETOKEN
+                if all_cells_of_sunk_ship:
+
+                    self.target_list = [(r, c) for r, c in self.target_list if (r, c) not in all_cells_of_sunk_ship]
+
+            self.turn = True # Continue turn
+            return True, True # Attack made, turn continues
+
+        elif cell_state == ' ': # Bắn trượt! (Miss)
+            gamelogic[rowX][colX] = 'X' # Cập nhật trạng thái ô trên lưới logic
+            # Tạo hiệu ứng và phát âm thanh trượt (sử dụng tham số)
+            from main import BLUETOKEN # Ensure import is correct
             tokens_list.append(Tokens(BLUETOKEN, cell_pos, 'Miss'))
             if sounds.get('shot'): sounds['shot'].play()
             if sounds.get('miss'): sounds['miss'].play()
 
             self.turn = False
-            return True, False
-        else:
-             self.turn = False
-             return False, False
+            return True, False # Đã tấn công, lượt kết thúc
 
-
-    def add_potential_targets(self, hit_coord, gamelogic, mode='adjacent', initial_hit=None):
-        r, c = hit_coord
-        rows, cols = len(gamelogic), len(gamelogic[0])
-        new_targets_to_add = []
-
-        if mode == 'adjacent':
-            potential_dirs = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-            for dr, dc in potential_dirs:
-                nr, nc = r + dr, c + dc
-                if 0 <= nr < rows and 0 <= nc < cols and gamelogic[nr][nc] in [' ', 'O']:
-                    new_target = (nr, nc)
-                    if new_target not in self.target_list and new_target not in new_targets_to_add:
-                        new_targets_to_add.append(new_target)
-
-        elif mode == 'horizontal' and initial_hit:
-            all_hits_on_row = sorted([h for h in self.get_all_current_hits(gamelogic) if h[0] == r])
-
-            if all_hits_on_row:
-                min_c = all_hits_on_row[0][1]
-                max_c = all_hits_on_row[-1][1]
-
-                nl, nc = r, min_c - 1
-                if 0 <= nc < cols and gamelogic[nl][nc] in [' ', 'O']:
-                    new_target = (nl, nc)
-                    if new_target not in self.target_list and new_target not in new_targets_to_add:
-                        new_targets_to_add.append(new_target)
-
-                nr, nc = r, max_c + 1
-                if 0 <= nc < cols and gamelogic[nr][nc] in [' ', 'O']:
-                    new_target = (nr, nc)
-                    if new_target not in self.target_list and new_target not in new_targets_to_add:
-                        new_targets_to_add.append(new_target)
-
-        elif mode == 'vertical' and initial_hit:
-            all_hits_on_col = sorted([h for h in self.get_all_current_hits(gamelogic) if h[1] == c])
-
-            if all_hits_on_col:
-                min_r = all_hits_on_col[0][0]
-                max_r = all_hits_on_col[-1][0]
-
-                nr, nc = min_r - 1, c
-                if 0 <= nr < rows and gamelogic[nr][nc] in [' ', 'O']:
-                    new_target = (nr, nc)
-                    if new_target not in self.target_list and new_target not in new_targets_to_add:
-                        new_targets_to_add.append(new_target)
-
-                nr, nc = max_r + 1, c
-                if 0 <= nr < rows and gamelogic[nr][nc] in [' ', 'O']:
-                    new_target = (nr, nc)
-                    if new_target not in self.target_list and new_target not in new_targets_to_add:
-                        new_targets_to_add.append(new_target)
-
-        for target in reversed(new_targets_to_add):
-            self.target_list.insert(0, target)
-
-    def get_all_current_hits(self, gamelogic):
-        hits = []
-        rows, cols = len(gamelogic), len(gamelogic[0])
-        for r in range(rows):
-            for c in range(cols):
-                if gamelogic[r][c] == 'T':
-                    hits.append((r, c))
-        return hits
+        else: 
+             self.turn = False # Kết thúc lượt (failsafe)
+             return False, False # Không tấn công được, kết thúc lượt (failsafe)
