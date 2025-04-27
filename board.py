@@ -1,5 +1,5 @@
 import pygame
-from constants import CELLSIZE, WHITE 
+from constants import WHITE 
 
 def createGameGrid(rows, cols, cellsize, pos):
     """Creates a 2D list of coordinates for the top-left corner of each grid cell."""
