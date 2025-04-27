@@ -1,12 +1,11 @@
 import pygame
-import random
-import time
+
 
 # Import Modules and specific names needed
 import constants as C
 import utils
 # Import classes/functions directly for original calling style
-from game_objects import Ship, Guns, Tokens, MessageBox, Button
+from game_objects import Ship, MessageBox, Button
 from player import Player, EasyComputer, MediumComputer, HardComputer
 from board import createGameGrid # Chỉ cần createGameGrid từ board
 from game_logic import (

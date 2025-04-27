@@ -301,7 +301,6 @@ class HardComputer(EasyComputer): # Kế thừa từ EasyComputer
         cell_pos = grid_coords[rowX][colX] # Lấy vị trí hình ảnh của ô
 
         if cell_state == 'O': # Trúng tàu! (Hit) - Bao gồm cả khi bắn từ moves list
-            # print(f"Expert AI: HIT at ({rowX},{colX})!") # Debugging
             gamelogic[rowX][colX] = 'T' # Cập nhật trạng thái ô trên lưới logic
             # Tạo hiệu ứng và phát âm thanh trúng (sử dụng tham số)
             from main import REDTOKEN, FIRETOKENIMAGELIST, EXPLOSIONIMAGELIST # Ensure imports are correct
@@ -316,7 +315,6 @@ class HardComputer(EasyComputer): # Kế thừa từ EasyComputer
             destroyed_ship = checkAndNotifyDestroyedShip(grid_coords, gamelogic, enemy_fleet, message_boxes_list)
 
             if destroyed_ship:
-                # Ship sunk! Reset hunting state related to *this* ship.
                 self.hunting_mode = False
                 self.last_hit_coords = None
                 self.initial_hit_coords = None
