@@ -52,102 +52,104 @@ def sortFleet(ship, shiplist):
         shiplist.remove(ship)
         shiplist.append(ship)
 
+def get_ship_placement_rect(ship, row, col, orientation, grid_coords, CELLSIZE):
+    """Calculates the placement rectangle for a ship based on its position and orientation."""
+    if orientation == "horizontal":
+        left = grid_coords[row][col][0]
+        top = grid_coords[row][col][1] + (CELLSIZE - ship.hImageHeight) // 2
+        return pygame.Rect(left, top, ship.hImageWidth, ship.hImageHeight)
+    elif orientation == "vertical":
+        left = grid_coords[row][col][0] + (CELLSIZE - ship.vImageWidth) // 2
+        top = grid_coords[row][col][1]
+        return pygame.Rect(left, top, ship.vImageWidth, ship.vImageHeight)
+    return None
+
+
+def is_valid_position(ship_rect, placed_ship_rects, rows, cols, grid_coords):
+    """Checks if a ship's placement is valid within the grid and does not overlap with other ships."""
+    # Check if the rectangle is within grid boundaries
+    if ship_rect.left < grid_coords[0][0][0] or \
+       ship_rect.right > grid_coords[0][-1][0] + CELLSIZE or \
+       ship_rect.top < grid_coords[0][0][1] or \
+       ship_rect.bottom > grid_coords[-1][0][1] + CELLSIZE:
+        return False
+
+    # Check for collisions with already placed ships
+    for placed_rect in placed_ship_rects:
+        if ship_rect.colliderect(placed_rect):
+            return False
+
+    return True
+
+
 def randomizeShipPositions(shiplist, gamegrid_coords):
-    """Places ships randomly on the grid without overlapping, applying centering."""
-    placedShipsRects = [] 
-    if not gamegrid_coords: return 
+    """Places ships on the grid using a randomized recursive Backtracking algorithm."""
+    if not gamegrid_coords or not shiplist:
+        return False  # Invalid input
+
     rows = len(gamegrid_coords)
-    if rows == 0: return
     cols = len(gamegrid_coords[0])
-    if cols == 0: return
+    placed_ship_rects = []  # Store pygame.Rect objects for collision checking
 
-    for ship in shiplist:
-        validPosition = False
-        attempts = 0
-        max_attempts = 100 # Prevent infinite loops
+    def is_valid_position(ship_rect):
+        """Checks if a ship's placement is valid within the grid and does not overlap with other ships."""
+        # Check if the rectangle is within grid boundaries
+        if ship_rect.left < gamegrid_coords[0][0][0] or \
+           ship_rect.right > gamegrid_coords[0][-1][0] + CELLSIZE or \
+           ship_rect.top < gamegrid_coords[0][0][1] or \
+           ship_rect.bottom > gamegrid_coords[-1][0][1] + CELLSIZE:
+            return False
 
-        while not validPosition and attempts < max_attempts:
-            attempts += 1
-            if ship.rotation:
-                ship.rotateShip(True) 
+        # Check for collisions with already placed ships
+        for placed_rect in placed_ship_rects:
+            if ship_rect.colliderect(placed_rect):
+                return False
 
-            # Choose rotation randomly
-            rotateShip = random.choice([True, False])
-            temp_rect = None
+        return True
 
-            if rotateShip: # Try horizontal placement
-                 ship.rotateShip(True) # Rotate to horizontal for size check
-                 ship_width_cells = (ship.hImageWidth + CELLSIZE - 1) // CELLSIZE # Cells needed horizontally
-                 max_row = rows - 1
-                 max_col = cols - ship_width_cells
-                 if max_col < 0 : max_col = 0 # Ensure index isn't negative
+    def place_ship(ship_index):
+        """Recursive function to place ships using Backtracking."""
+        if ship_index == len(shiplist):
+            return True  # All ships placed successfully
 
-                 if max_row >= 0 and max_col >= 0:
-                     yAxis = random.randint(0, max_row)
-                     xAxis = random.randint(0, max_col)
-                     potential_pos = gamegrid_coords[yAxis][xAxis] # Top-left of starting cell
+        ship = shiplist[ship_index]
+        # Generate all possible positions and orientations for the current ship
+        positions = [(row, col, orientation) for row in range(rows) for col in range(cols) for orientation in ["horizontal", "vertical"]]
+        random.shuffle(positions)  # Shuffle positions to randomize placement order
 
-                     # === ÁP DỤNG CĂN CHỈNH NGANG ===
-                     final_left = potential_pos[0]
-                     final_top = potential_pos[1] + (CELLSIZE - ship.hImageHeight) // 2
-                     # === KẾT THÚC ÁP DỤNG ===
+        for row, col, orientation in positions:
+            # Calculate the ship's placement rectangle
+            ship_rect = get_ship_placement_rect(ship, row, col, orientation, gamegrid_coords, CELLSIZE)
 
-                     temp_rect = ship.hImageRect.copy()
-                     temp_rect.topleft = (final_left, final_top) # Gán tọa độ đã căn chỉnh
-                 else:
-                      ship.rotateShip(True) # Rotate back if placement impossible
-                      continue # Try again
+            if ship_rect and is_valid_position(ship_rect):
+                # Temporarily place the ship
+                ship.rect = ship_rect
+                ship.rotation = (orientation == "horizontal")
+                ship.switchImageAndRect()
+                placed_ship_rects.append(ship.rect)
 
-            else: 
-                 ship_height_cells = (ship.vImageHeight + CELLSIZE - 1) // CELLSIZE # Cells needed vertically
-                 max_row = rows - ship_height_cells
-                 max_col = cols - 1
-                 if max_row < 0 : max_row = 0
-                 if max_col < 0 : max_col = 0
+                # Recurse to place the next ship
+                if place_ship(ship_index + 1):
+                    return True
 
-                 if max_row >= 0 and max_col >= 0:
-                     yAxis = random.randint(0, max_row)
-                     xAxis = random.randint(0, max_col)
-                     potential_pos = gamegrid_coords[yAxis][xAxis] # Top-left of starting cell
+                # Backtrack: Remove the ship from the placed list
+                placed_ship_rects.pop()
 
-                     # === ÁP DỤNG CĂN CHỈNH DỌC ===
-                     final_left = potential_pos[0] + (CELLSIZE - ship.vImageWidth) // 2
-                     final_top = potential_pos[1]
-                     # === KẾT THÚC ÁP DỤNG ===
+        return False
 
-                     temp_rect = ship.vImageRect.copy()
-                     temp_rect.topleft = (final_left, final_top) # Gán tọa độ đã căn chỉnh
-                 else:
-                      continue # Try again
+    # Shuffle the shiplist to ensure different placement orders
+    random.shuffle(shiplist)
 
-            # Check collision with already placed ships
-            collision = False
-            if temp_rect:
-                 for placed_rect in placedShipsRects:
-                      # Add a small buffer to collision check if needed? (Optional)
-                      # inflated_rect = placed_rect.inflate(2, 2) # Example buffer
-                      # if temp_rect.colliderect(inflated_rect):
-                      if temp_rect.colliderect(placed_rect):
-                           collision = True
-                           break
-            else:
-                 collision = True # No valid position generated
+    # Start the Backtracking process
+    if not place_ship(0):
+        print("Warning: Could not place all ships.")
+        for ship in shiplist:
+            ship.returnToDefaultPosition()  # Reset ships if placement fails
+        return False
 
-            if not collision and temp_rect:
-                 validPosition = True
-                 ship.rect = temp_rect
-                 ship.vImageRect.center = ship.hImageRect.center = ship.rect.center # Sync rects
-                 placedShipsRects.append(ship.rect) # Add current ship's rect
-                 ship.rotation = rotateShip
-                 ship.switchImageAndRect() # Update image based on final rotation              
-            else:
-                 if ship.rotation != rotateShip: # If rotation was attempted but failed
-                     ship.rotateShip(True) # Toggle back to vertical (default)
-
-        if not validPosition:
-             print(f"Warning: Could not place ship {ship.name} after {max_attempts} attempts.")
-             ship.returnToDefaultPosition() # Place at default as fallback
-             placedShipsRects.append(ship.rect)
+    # Update the game logic grid
+    updateGameLogic(gamegrid_coords, shiplist, createGameLogic(rows, cols))
+    return True
 
 
 # Trong game_logic.py
