@@ -26,7 +26,7 @@ FLEET = {
 }
 
 # Image Paths
-MAINMENUIMAGE_PATH = 'assets/images/background/bg.jpg'
+MAINMENUIMAGE_PATH = 'assets/images/background/bg2.jpg'
 ENDSCREENIMAGE_PATH = 'assets/images/background/bg1.jpg'
 BACKGROUND_PATH = 'assets/images/background/gamebg.png'
 PGAMEGRIDIMG_PATH = 'assets/images/grids/player_grid.png'
