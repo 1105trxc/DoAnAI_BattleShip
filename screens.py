@@ -1,11 +1,18 @@
 import pygame # Đảm bảo pygame được import
-from constants import MAIN_MENU, DEPLOYMENT_STATE, GAME_OVER, WHITE, CELLSIZE # Import constants
+from constants import MAIN_MENU, DEPLOYMENT_STATE, GAME_OVER, WHITE, BLACK, CELLSIZE # Import constants
 from utils import displayShipNames # Import utils
 from board import showGridOnScreen # Import board functions
 
 def mainMenuScreen(window, background_image, buttons):
     """Draws the Main Menu screen."""
     window.blit(background_image, (0, 0))
+
+     # Draw the game title "Battle Ship"
+    font = pygame.font.SysFont('Stencil', 120)  
+    title_surface = font.render("BattleShip", True, BLACK)  
+    title_rect = title_surface.get_rect(topleft=(300, 170)) 
+    window.blit(title_surface, title_rect)
+
     # Draw only relevant buttons for Main Menu
     for button in buttons:
         # Activate only AI selection buttons in Main Menu
