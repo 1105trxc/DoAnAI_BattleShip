@@ -1,1 +1,0 @@
-, get_ship_at_coord

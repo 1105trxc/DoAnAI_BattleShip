@@ -237,14 +237,116 @@ class MediumComputer(EasyComputer):
         return False, False
 
 
-
 class HardComputer(EasyComputer):
     def __init__(self):
         super().__init__()
         self.name = 'Hard Computer'
-        self.moves = []
+        self.moves = []  # For Hunt and Target
+        self.attack_history = []  # For tracking attacks
+        self.hunt_mode = True     # Start in hunt mode
+        
+        # Q-Learning parameters
+        self.q_table = {}  # Dictionary to store Q-values
+        self.learning_rate = 0.1  # Alpha - how much to update our values
+        self.discount_factor = 0.9  # Gamma - how much to value future rewards
+        self.epsilon = 0.1  # Exploration rate
+        
+        # Load Q-table if exists, otherwise initialize new one
+        self.load_q_table()
+        if not self.q_table:
+            self.initialize_q_table()
+
+    def save_q_table(self):
+        """Save Q-table to a file"""
+        try:
+            import json
+            with open('q_table.json', 'w') as f:
+                json.dump(self.q_table, f)
+            print("Q-table saved successfully")
+        except Exception as e:
+            print(f"Error saving Q-table: {e}")
+
+    def load_q_table(self):
+        """Load Q-table from file"""
+        try:
+            import json
+            import os
+            if os.path.exists('q_table.json'):
+                with open('q_table.json', 'r') as f:
+                    self.q_table = json.load(f)
+                print("Q-table loaded successfully")
+            else:
+                print("No existing Q-table found, will initialize new one")
+                self.q_table = {}
+        except Exception as e:
+            print(f"Error loading Q-table: {e}")
+            self.q_table = {}
+
+    def initialize_q_table(self):
+        """Initialize Q-table with all possible states"""
+        for r in range(10):  # Assuming 10x10 grid
+            for c in range(10):
+                state = self.get_state_representation(r, c)
+                self.q_table[state] = 0.0  # Initialize Q-value to 0
+        self.save_q_table()
+
+    def get_state_representation(self, row, col):
+        """Convert grid state to a unique string representation"""
+        return f"{row},{col}"
+
+    def get_reward(self, cell_state, is_hit, is_sunk):
+        """Calculate reward based on action result"""
+        if is_sunk:
+            return 10.0  # High reward for sinking a ship
+        elif is_hit:
+            return 5.0   # Medium reward for hitting a ship
+        elif cell_state == 'X':
+            return -1.0  # Small penalty for missing
+        return 0.0       # No reward for invalid moves
+
+    def update_q_value(self, state, action, reward, next_state):
+        """Update Q-value using Q-learning formula"""
+        current_q = self.q_table.get(state, 0.0)
+        next_max_q = max(self.q_table.get(next_state, 0.0), 0.0)
+        
+        new_q = current_q + self.learning_rate * (
+            reward + self.discount_factor * next_max_q - current_q
+        )
+        
+        self.q_table[state] = new_q
+        self.save_q_table()
+
+    def choose_action(self, gamelogic, rows, cols):
+        """Choose action using epsilon-greedy strategy"""
+        valid_moves = []
+        for r in range(rows):
+            for c in range(cols):
+                if gamelogic[r][c] in [' ', 'O']:
+                    valid_moves.append((r, c))
+
+        if not valid_moves:
+            return None
+
+        if random.random() < self.epsilon:
+            return random.choice(valid_moves)
+        else:
+            best_value = float('-inf')
+            best_moves = []
+            
+            for r, c in valid_moves:
+                state = self.get_state_representation(r, c)
+                q_value = self.q_table.get(state, 0.0)
+                
+                if q_value > best_value:
+                    best_value = q_value
+                    best_moves = [(r, c)]
+                elif q_value == best_value:
+                    best_moves.append((r, c))
+            
+            return random.choice(best_moves) if best_moves else random.choice(valid_moves)
 
     def generateMoves(self, coords, gamelogic, rows, cols):
+        """Generate moves for Hunt and Target algorithm using BFS"""
         r_start, c_start = coords
         self.moves.clear()
         queue = [(r_start, c_start)]
@@ -270,47 +372,62 @@ class HardComputer(EasyComputer):
         if current_time - last_attack_time < current_attack_delay:
             return False, self.turn
 
-        rows = len(gamelogic)
-        cols = len(gamelogic[0])
+        rows, cols = len(gamelogic), len(gamelogic[0])
         target_coord = None
 
+        # Hunt and Target Strategy
         if self.moves:
             self.moves = [(r, c) for r, c in self.moves if gamelogic[r][c] in [' ', 'O']]
             if self.moves:
                 target_coord = self.moves.pop(0)
+                self.hunt_mode = False
+
+        # If no target moves, use Q-learning
+        if not target_coord:
+            target_coord = self.choose_action(gamelogic, rows, cols)
+            self.hunt_mode = True
 
         if not target_coord:
-            validChoice = False
-            attempts = 0
-            max_attempts = rows * cols * 2
-            while not validChoice and attempts < max_attempts:
-                rowX = random.randint(0, rows - 1)
-                colX = random.randint(0, cols - 1)
-                if gamelogic[rowX][colX] in [' ', 'O']:
-                    validChoice = True
-                    target_coord = (rowX, colX)
-                attempts += 1
-
-            if not validChoice:
-                self.turn = False
-                return False, False
+            self.turn = False
+            return False, False
 
         rowX, colX = target_coord
+        current_state = self.get_state_representation(rowX, colX)  # Lấy trạng thái hiện tại
         cell_state = gamelogic[rowX][colX]
         cell_pos = grid_coords[rowX][colX]
 
-        if cell_state == 'O':
+        if cell_state == 'O':  # Hit
             gamelogic[rowX][colX] = 'T'
             from main import REDTOKEN, FIRETOKENIMAGELIST, EXPLOSIONIMAGELIST
             tokens_list.append(Tokens(REDTOKEN, cell_pos, 'Hit', FIRETOKENIMAGELIST, EXPLOSIONIMAGELIST))
             if sounds.get('shot'): sounds['shot'].play()
             if sounds.get('hit'): sounds['hit'].play()
-
-            self.generateMoves(target_coord, gamelogic, rows, cols)
-
-            from game_logic import checkAndNotifyDestroyedShip
+            
+            # Generate new moves
+            self.generateMoves((rowX, colX), gamelogic, rows, cols)
+            
+            from game_logic import checkAndNotifyDestroyedShip, get_ship_at_coord
             destroyed_ship = checkAndNotifyDestroyedShip(grid_coords, gamelogic, enemy_fleet, message_boxes_list)
+            
+            # Tính phần thưởng và cập nhật Q-value
+            reward = self.get_reward(cell_state, True, bool(destroyed_ship))
+            next_state = self.get_state_representation(rowX, colX)
+            self.update_q_value(current_state, (rowX, colX), reward, next_state)
+            
+            if destroyed_ship:
+                ship_cells = get_ship_at_coord(grid_coords, enemy_fleet, rowX, colX, gamelogic)
+                if ship_cells:
+                    self.update_destroyed_ship_cells(ship_cells)
 
+                # Check for other adjacent ships
+                for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                    nr, nc = rowX + dr, colX + dc
+                    if 0 <= nr < rows and 0 <= nc < cols and gamelogic[nr][nc] == 'O':
+                        adjacent_ship_cells = get_ship_at_coord(grid_coords, enemy_fleet, nr, nc, gamelogic)
+                        if adjacent_ship_cells:
+                            self.update_destroyed_ship_cells(adjacent_ship_cells)
+
+            # Do not reset moves until all are processed
             self.turn = True
             return True, True
 
@@ -320,10 +437,14 @@ class HardComputer(EasyComputer):
             tokens_list.append(Tokens(BLUETOKEN, cell_pos, 'Miss'))
             if sounds.get('shot'): sounds['shot'].play()
             if sounds.get('miss'): sounds['miss'].play()
-
+            
+            # Cập nhật Q-value cho trường hợp bắn trượt
+            reward = self.get_reward(cell_state, False, False)
+            next_state = self.get_state_representation(rowX, colX)
+            self.update_q_value(current_state, (rowX, colX), reward, next_state)
+            
             self.turn = False
             return True, False
 
-        else:
-            self.turn = False
-            return False, False
+        self.turn = False
+        return False, False
