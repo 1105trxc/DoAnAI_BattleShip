@@ -1,5 +1,6 @@
 import pygame
 import random
+import time  # Import thêm thư viện time
 from constants import CELLSIZE
 from game_objects import Tokens 
 
@@ -84,6 +85,7 @@ class EasyComputer:
         return score
 
     def makeAttack(self, gamelogic, grid_coords, enemy_fleet, tokens_list, message_boxes_list, sounds, current_time, last_attack_time):
+        start_time = time.perf_counter()  # Bắt đầu đo thời gian với độ chính xác cao
         attack_delay = 1000
         if current_time - last_attack_time < attack_delay:
             return False, self.turn
@@ -112,6 +114,7 @@ class EasyComputer:
 
         if target_coord is None:
             self.turn = False
+            print(f"{self.name} attack execution time: {(time.perf_counter() - start_time) * 1000:.2f} ms")
             return False, False
 
         rowX, colX = target_coord
@@ -132,6 +135,7 @@ class EasyComputer:
                 if ship_cells:
                     self.update_destroyed_ship_cells(ship_cells)
             self.turn = True
+            print(f"{self.name} attack execution time: {(time.perf_counter() - start_time) * 1000:.2f} ms")
             return True, True
 
         elif cell_state == ' ':
@@ -141,10 +145,12 @@ class EasyComputer:
             if sounds.get('shot'): sounds['shot'].play()
             if sounds.get('miss'): sounds['miss'].play()
             self.turn = False
+            print(f"{self.name} attack execution time: {(time.perf_counter() - start_time) * 1000:.2f} ms")
             return True, False
 
         else:
             self.turn = False
+            print(f"{self.name} attack execution time: {(time.perf_counter() - start_time) * 1000:.2f} ms")
             return False, False
 
     def draw(self, window, grid_coords):
@@ -180,6 +186,7 @@ class MediumComputer(EasyComputer):
         return score
 
     def makeAttack(self, gamelogic, grid_coords, enemy_fleet, tokens_list, message_boxes_list, sounds, current_time, last_attack_time):
+        start_time = time.perf_counter()  # Bắt đầu đo thời gian với độ chính xác cao
         attack_delay = 1000
         if current_time - last_attack_time < attack_delay:
             return False, self.turn
@@ -195,6 +202,7 @@ class MediumComputer(EasyComputer):
 
         if not scored_cells:
             self.turn = False
+            print(f"{self.name} attack execution time: {(time.perf_counter() - start_time) * 1000:.2f} ms")
             return False, False
 
         max_score = max(score for (_, score) in scored_cells)
@@ -222,6 +230,7 @@ class MediumComputer(EasyComputer):
                     self.hits = [(r, c) for r, c in self.hits if (r, c) not in ship_cells]
 
             self.turn = True
+            print(f"{self.name} attack execution time: {(time.perf_counter() - start_time) * 1000:.2f} ms")
             return True, True
 
         elif cell_state == ' ':
@@ -231,9 +240,11 @@ class MediumComputer(EasyComputer):
             if sounds.get('shot'): sounds['shot'].play()
             if sounds.get('miss'): sounds['miss'].play()
             self.turn = False
+            print(f"{self.name} attack execution time: {(time.perf_counter() - start_time) * 1000:.2f} ms")
             return True, False
 
         self.turn = False
+        print(f"{self.name} attack execution time: {(time.perf_counter() - start_time) * 1000:.2f} ms")
         return False, False
 
 
@@ -365,6 +376,7 @@ class HardComputer(EasyComputer):
                         queue.append((nr, nc))
 
     def makeAttack(self, gamelogic, grid_coords, enemy_fleet, tokens_list, message_boxes_list, sounds, current_time, last_attack_time):
+        start_time = time.perf_counter()  # Bắt đầu đo thời gian với độ chính xác cao
         attack_delay_hunt = 1000
         attack_delay_target = 500
 
@@ -389,6 +401,7 @@ class HardComputer(EasyComputer):
 
         if not target_coord:
             self.turn = False
+            print(f"{self.name} attack execution time: {(time.perf_counter() - start_time) * 1000:.2f} ms")
             return False, False
 
         rowX, colX = target_coord
@@ -429,6 +442,7 @@ class HardComputer(EasyComputer):
 
             # Do not reset moves until all are processed
             self.turn = True
+            print(f"{self.name} attack execution time: {(time.perf_counter() - start_time) * 1000:.2f} ms")
             return True, True
 
         elif cell_state == ' ':
@@ -444,7 +458,9 @@ class HardComputer(EasyComputer):
             self.update_q_value(current_state, (rowX, colX), reward, next_state)
             
             self.turn = False
+            print(f"{self.name} attack execution time: {(time.perf_counter() - start_time) * 1000:.2f} ms")
             return True, False
 
         self.turn = False
+        print(f"{self.name} attack execution time: {(time.perf_counter() - start_time) * 1000:.2f} ms")
         return False, False
