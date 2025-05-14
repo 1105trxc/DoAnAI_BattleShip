@@ -336,26 +336,26 @@ class HardComputer(EasyComputer):
                     valid_moves.append((r, c))
 
         if not valid_moves:
-            return None
+                return None
 
-        best_value = float('-inf')
-        best_moves = []
-        
-        for r, c in valid_moves:
-            state = self.get_state_representation(r, c)
-            q_value = self.q_table.get(state, 0.0)
+        if random.random() < self.epsilon:
+            return random.choice(valid_moves)
+        else:
+            best_value = float('-inf')
+            best_moves = []
             
-            if q_value > best_value:
-                best_value = q_value
-                best_moves = [(r, c)]
-            elif q_value == best_value:
-                best_moves.append((r, c))
-
-        if best_moves:
-            return random.choice(best_moves)
-
-        return random.choice(valid_moves)
-
+            for r, c in valid_moves:
+                state = self.get_state_representation(r, c)
+                q_value = self.q_table.get(state, 0.0)
+                
+                if q_value > best_value:
+                    best_value = q_value
+                    best_moves = [(r, c)]
+                elif q_value == best_value:
+                    best_moves.append((r, c))
+            
+            return random.choice(best_moves) if best_moves else random.choice(valid_moves)
+        
     def generateMoves(self, coords, gamelogic, rows, cols):
         """Generate moves for Hunt and Target algorithm using BFS"""
         r_start, c_start = coords
@@ -439,7 +439,7 @@ class HardComputer(EasyComputer):
                         adjacent_ship_cells = get_ship_at_coord(grid_coords, enemy_fleet, nr, nc, gamelogic)
                         if adjacent_ship_cells:
                             self.update_destroyed_ship_cells(adjacent_ship_cells)
-    
+
             # Do not reset moves until all are processed
             self.turn = True
             print(f"{self.name} attack execution time: {(time.perf_counter() - start_time) * 1000:.2f} ms")
