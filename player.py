@@ -439,7 +439,7 @@ class HardComputer(EasyComputer):
                         adjacent_ship_cells = get_ship_at_coord(grid_coords, enemy_fleet, nr, nc, gamelogic)
                         if adjacent_ship_cells:
                             self.update_destroyed_ship_cells(adjacent_ship_cells)
-
+    
             # Do not reset moves until all are processed
             self.turn = True
             print(f"{self.name} attack execution time: {(time.perf_counter() - start_time) * 1000:.2f} ms")

@@ -64,24 +64,6 @@ def get_ship_placement_rect(ship, row, col, orientation, grid_coords, CELLSIZE):
         return pygame.Rect(left, top, ship.vImageWidth, ship.vImageHeight)
     return None
 
-
-def is_valid_position(ship_rect, placed_ship_rects, rows, cols, grid_coords):
-    """Checks if a ship's placement is valid within the grid and does not overlap with other ships."""
-    # Check if the rectangle is within grid boundaries
-    if ship_rect.left < grid_coords[0][0][0] or \
-       ship_rect.right > grid_coords[0][-1][0] + CELLSIZE or \
-       ship_rect.top < grid_coords[0][0][1] or \
-       ship_rect.bottom > grid_coords[-1][0][1] + CELLSIZE:
-        return False
-
-    # Check for collisions with already placed ships
-    for placed_rect in placed_ship_rects:
-        if ship_rect.colliderect(placed_rect):
-            return False
-
-    return True
-
-
 def randomizeShipPositions(shiplist, gamegrid_coords):
     """Places ships on the grid using a randomized recursive Backtracking algorithm."""
     if not gamegrid_coords or not shiplist:
