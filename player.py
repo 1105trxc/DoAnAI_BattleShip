@@ -263,11 +263,11 @@ class HardComputer(EasyComputer):
         self.epsilon = 0.2  # Exploration rate
         
         # Load Q-table if exists, otherwise initialize new one
-        self.load_q_table()
+        self.loadQTable()
         if not self.q_table:
-            self.initialize_q_table()
+            self.initializeQTable()
 
-    def save_q_table(self):
+    def saveQTable(self):
         """Save Q-table to a file"""
         try:
             import json
@@ -277,7 +277,7 @@ class HardComputer(EasyComputer):
         except Exception as e:
             print(f"Error saving Q-table: {e}")
 
-    def load_q_table(self):
+    def loadQTable(self):
         """Load Q-table from file"""
         try:
             import json
@@ -293,19 +293,19 @@ class HardComputer(EasyComputer):
             print(f"Error loading Q-table: {e}")
             self.q_table = {}
 
-    def initialize_q_table(self):
+    def initializeQTable(self):
         """Initialize Q-table with all possible states"""
         for r in range(10):  # Assuming 10x10 grid
             for c in range(10):
-                state = self.get_state_representation(r, c)
+                state = self.getStateRepresentation(r, c)
                 self.q_table[state] = 0.0  # Initialize Q-value to 0
-        self.save_q_table()
+        self.saveQTable()
 
-    def get_state_representation(self, row, col):
+    def getStateRepresentation(self, row, col):
         """Convert grid state to a unique string representation"""
         return f"{row},{col}"
 
-    def get_reward(self, cell_state, is_hit, is_sunk):
+    def getReward(self, cell_state, is_hit, is_sunk):
         """Calculate reward based on action result"""
         if is_sunk:
             return 10.0  # High reward for sinking a ship
@@ -325,7 +325,7 @@ class HardComputer(EasyComputer):
         )
         
         self.q_table[state] = new_q
-        self.save_q_table()
+        self.saveQTable()
 
     def choose_action(self, gamelogic, rows, cols):
         """Choose action based on highest Q-value or random exploration"""
@@ -345,7 +345,7 @@ class HardComputer(EasyComputer):
             best_moves = []
             
             for r, c in valid_moves:
-                state = self.get_state_representation(r, c)
+                state = self.getStateRepresentation(r, c)
                 q_value = self.q_table.get(state, 0.0)
                 
                 if q_value > best_value:
@@ -405,7 +405,7 @@ class HardComputer(EasyComputer):
             return False, False
 
         rowX, colX = target_coord
-        current_state = self.get_state_representation(rowX, colX) 
+        current_state = self.getStateRepresentation(rowX, colX) 
         cell_state = gamelogic[rowX][colX]
         cell_pos = grid_coords[rowX][colX]
 
@@ -423,8 +423,8 @@ class HardComputer(EasyComputer):
             destroyed_ship = checkAndNotifyDestroyedShip(grid_coords, gamelogic, enemy_fleet, message_boxes_list)
             
             # Calculate reward
-            reward = self.get_reward(cell_state, True, bool(destroyed_ship))
-            next_state = self.get_state_representation(rowX, colX)
+            reward = self.getReward(cell_state, True, bool(destroyed_ship))
+            next_state = self.getStateRepresentation(rowX, colX)
             self.update_q_value(current_state, (rowX, colX), reward, next_state)
             
             if destroyed_ship:
@@ -453,8 +453,8 @@ class HardComputer(EasyComputer):
             if sounds.get('miss'): sounds['miss'].play()
             
             # Update Q-value
-            reward = self.get_reward(cell_state, False, False)
-            next_state = self.get_state_representation(rowX, colX)
+            reward = self.getReward(cell_state, False, False)
+            next_state = self.getStateRepresentation(rowX, colX)
             self.update_q_value(current_state, (rowX, colX), reward, next_state)
             
             self.turn = False
