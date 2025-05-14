@@ -85,7 +85,7 @@ class EasyComputer:
         return score
 
     def makeAttack(self, gamelogic, grid_coords, enemy_fleet, tokens_list, message_boxes_list, sounds, current_time, last_attack_time):
-        start_time = time.perf_counter()  # Bắt đầu đo thời gian với độ chính xác cao
+        start_time = time.perf_counter() 
         attack_delay = 1000
         if current_time - last_attack_time < attack_delay:
             return False, self.turn
@@ -186,7 +186,7 @@ class MediumComputer(EasyComputer):
         return score
 
     def makeAttack(self, gamelogic, grid_coords, enemy_fleet, tokens_list, message_boxes_list, sounds, current_time, last_attack_time):
-        start_time = time.perf_counter()  # Bắt đầu đo thời gian với độ chính xác cao
+        start_time = time.perf_counter() 
         attack_delay = 1000
         if current_time - last_attack_time < attack_delay:
             return False, self.turn
@@ -328,7 +328,7 @@ class HardComputer(EasyComputer):
         self.save_q_table()
 
     def choose_action(self, gamelogic, rows, cols):
-        """Choose action using epsilon-greedy strategy"""
+        """Choose action based on highest Q-value or random exploration"""
         valid_moves = []
         for r in range(rows):
             for c in range(cols):
@@ -338,23 +338,23 @@ class HardComputer(EasyComputer):
         if not valid_moves:
             return None
 
-        if random.random() < self.epsilon:
-            return random.choice(valid_moves)
-        else:
-            best_value = float('-inf')
-            best_moves = []
+        best_value = float('-inf')
+        best_moves = []
+        
+        for r, c in valid_moves:
+            state = self.get_state_representation(r, c)
+            q_value = self.q_table.get(state, 0.0)
             
-            for r, c in valid_moves:
-                state = self.get_state_representation(r, c)
-                q_value = self.q_table.get(state, 0.0)
-                
-                if q_value > best_value:
-                    best_value = q_value
-                    best_moves = [(r, c)]
-                elif q_value == best_value:
-                    best_moves.append((r, c))
-            
-            return random.choice(best_moves) if best_moves else random.choice(valid_moves)
+            if q_value > best_value:
+                best_value = q_value
+                best_moves = [(r, c)]
+            elif q_value == best_value:
+                best_moves.append((r, c))
+
+        if best_moves:
+            return random.choice(best_moves)
+
+        return random.choice(valid_moves)
 
     def generateMoves(self, coords, gamelogic, rows, cols):
         """Generate moves for Hunt and Target algorithm using BFS"""
@@ -376,7 +376,7 @@ class HardComputer(EasyComputer):
                         queue.append((nr, nc))
 
     def makeAttack(self, gamelogic, grid_coords, enemy_fleet, tokens_list, message_boxes_list, sounds, current_time, last_attack_time):
-        start_time = time.perf_counter()  # Bắt đầu đo thời gian với độ chính xác cao
+        start_time = time.perf_counter()  
         attack_delay_hunt = 1000
         attack_delay_target = 500
 
@@ -405,7 +405,7 @@ class HardComputer(EasyComputer):
             return False, False
 
         rowX, colX = target_coord
-        current_state = self.get_state_representation(rowX, colX)  # Lấy trạng thái hiện tại
+        current_state = self.get_state_representation(rowX, colX) 
         cell_state = gamelogic[rowX][colX]
         cell_pos = grid_coords[rowX][colX]
 
@@ -422,7 +422,7 @@ class HardComputer(EasyComputer):
             from game_logic import checkAndNotifyDestroyedShip, get_ship_at_coord
             destroyed_ship = checkAndNotifyDestroyedShip(grid_coords, gamelogic, enemy_fleet, message_boxes_list)
             
-            # Tính phần thưởng và cập nhật Q-value
+            # Calculate reward
             reward = self.get_reward(cell_state, True, bool(destroyed_ship))
             next_state = self.get_state_representation(rowX, colX)
             self.update_q_value(current_state, (rowX, colX), reward, next_state)
@@ -452,7 +452,7 @@ class HardComputer(EasyComputer):
             if sounds.get('shot'): sounds['shot'].play()
             if sounds.get('miss'): sounds['miss'].play()
             
-            # Cập nhật Q-value cho trường hợp bắn trượt
+            # Update Q-value
             reward = self.get_reward(cell_state, False, False)
             next_state = self.get_state_representation(rowX, colX)
             self.update_q_value(current_state, (rowX, colX), reward, next_state)
