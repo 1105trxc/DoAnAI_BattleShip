@@ -7,11 +7,11 @@ import utils
 # Import classes/functions directly for original calling style
 from game_objects import Ship, MessageBox, Button
 from player import Player, EasyComputer, MediumComputer, HardComputer
-from board import createGameGrid # Chỉ cần createGameGrid từ board
+from board import createGameGrid 
 from game_logic import (
     createGameLogic, updateGameLogic, printGameLogic, sortFleet,
     randomizeShipPositions, resetShips, areShipsPlacedCorrectly,
-    deploymentPhase, takeTurns, checkForWinners, get_ship_at_coord # Thêm get_ship_at_coord nếu cần
+    deploymentPhase, takeTurns, checkForWinners, get_ship_at_coord
 )
 from screens import updateGameScreen
 
@@ -111,7 +111,7 @@ def reset_game_for_new_round():
     global pFleet, cFleet, pGameLogic, cGameLogic, player1, computer, TOKENS, MESSAGE_BOXES
     global DEPLOYMENT, GAMESTATE, gameOverMessageShown, winnerMessage, active_ship, lastComputerAttackTime
 
-    # print("Resetting game for new round...") # Bỏ print thừa
+    # print("Resetting game for new round...")
     TOKENS.clear()
     MESSAGE_BOXES.clear()
 
@@ -127,10 +127,8 @@ def reset_game_for_new_round():
     player1.turn = True
     computer.turn = False
 
-    # <<< CHỈ ĐẶT STATE MỘT LẦN >>>
     DEPLOYMENT = True
-    GAMESTATE = C.DEPLOYMENT_STATE # Luôn đặt về Deployment khi reset để chơi mới
-    # <<< KẾT THÚC THAY ĐỔI >>>
+    GAMESTATE = C.DEPLOYMENT_STATE
 
     gameOverMessageShown = False
     winnerMessage = None
@@ -270,13 +268,13 @@ while RUNGAME:
                 if active_ship:
                     collision = active_ship.checkForCollisions([s for s in pFleet if s is not active_ship])
                     if not collision:
-                        active_ship.snapToGrid(pGameGridCoords)  # Gọi snapToGrid để căn chỉnh
+                        active_ship.snapToGrid(pGameGridCoords) 
                         active_ship.active = False
-                        updateGameLogic(pGameGridCoords, pFleet, pGameLogic)  # Cập nhật lưới logic
+                        updateGameLogic(pGameGridCoords, pFleet, pGameLogic)  
                     else:
                         active_ship.active = False
                         MESSAGE_BOXES.append(MessageBox("Ships cannot overlap!", duration=2000))
-                        active_ship.returnToDefaultPosition()  # Trả về vị trí mặc định nếu va chạm
+                        active_ship.returnToDefaultPosition()  
                     active_ship = None
 
 

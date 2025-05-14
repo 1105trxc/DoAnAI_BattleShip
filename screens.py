@@ -1,4 +1,4 @@
-import pygame # Đảm bảo pygame được import
+import pygame
 from constants import MAIN_MENU, DEPLOYMENT_STATE, GAME_OVER, WHITE, BLACK, CELLSIZE # Import constants
 from utils import displayShipNames # Import utils
 from board import showGridOnScreen # Import board functions
@@ -28,27 +28,23 @@ def deploymentScreen(window, background_image, pGameGridImg, cGameGridImg, radar
     """Draws the Deployment/Attack screen with correct button activation."""
     window.blit(background_image, (0, 0))
 
-    # --- Vẽ nền lưới và lưới kẻ ---
+
     if pGameGridImg and pGameGridCoords: window.blit(pGameGridImg, (0, 0))
     if cGameGridImg and cGameGridCoords: window.blit(cGameGridImg, (cGameGridCoords[0][0][0] - 50, cGameGridCoords[0][0][1] - 50))
     if radarGridImg and cGameGridCoords: window.blit(radarGridImg, (cGameGridCoords[0][0][0], cGameGridCoords[0][0][1]))
     if pGameGridCoords or cGameGridCoords:
         showGridOnScreen(window, CELLSIZE, pGameGridCoords, cGameGridCoords)
 
-    # --- Vẽ Tàu ---
     for ship in pFleet: ship.draw(window, is_computer_grid=False)
     for ship in cFleet: ship.draw(window, is_computer_grid=True)
 
-    # --- Vẽ Tên Tàu (Chỉ khi đang Deploy) ---
     if current_deployment_status:
         try:
             from constants import FLEET
             displayShipNames(window, FLEET.keys())
         except ImportError: print("Warning: Could not import FLEET from constants in screens.py")
 
-    # --- Vẽ Nút Bấm (Logic kích hoạt và đổi tên chính xác) ---
     for button in buttons:
-        # Xác định tên nút hiệu quả sẽ được hiển thị/kiểm tra
         effective_button_name = button.name
         if not current_deployment_status and button.name == 'Randomize': effective_button_name = 'Quit'
         elif current_deployment_status and button.name == 'Quit': effective_button_name = 'Randomize'
@@ -56,35 +52,28 @@ def deploymentScreen(window, background_image, pGameGridImg, cGameGridImg, radar
         elif current_deployment_status and button.name == 'Redeploy': effective_button_name = 'Deploy'
 
         is_button_active_in_this_state = False
-        # Kích hoạt nút dựa trên trạng thái VÀ tên HIỆU QUẢ
-        if current_deployment_status: # Đang Đặt Tàu
+        if current_deployment_status: 
             if effective_button_name in ['Randomize', 'Reset', 'Deploy', 'Back to Main']:
                 is_button_active_in_this_state = True
-        else: # Đang Tấn Công
+        else: 
             if effective_button_name in ['Redeploy', 'Quit', 'Back to Main']:
                 is_button_active_in_this_state = True
-        # Các nút chọn AI không bao giờ active trong màn hình này
         if effective_button_name in ['Easy Computer', 'Medium Computer', 'Hard Computer']:
              is_button_active_in_this_state = False
 
-        # Cập nhật trạng thái active của đối tượng nút
         button.active = is_button_active_in_this_state
 
-        # Cập nhật tên và text nếu tên hiệu quả khác tên gốc lưu trong nút
         if button.name != effective_button_name:
             button.name = effective_button_name
-            button.msg = button.addText(button.name) # Render lại text
-            button.msgRect = button.msg.get_rect(center=button.rect.center) # Cập nhật vị trí text
+            button.msg = button.addText(button.name) 
+            button.msgRect = button.msg.get_rect(center=button.rect.center)
 
-        # Chỉ VẼ nút nếu nó ACTIVE trong trạng thái này
         if button.active:
             button.draw(window, current_deployment_status)
 
-    # --- Vẽ Trạng Thái Máy Tính (Chỉ khi đang Tấn công?) ---
     if not current_deployment_status and computer_player and cGameGridCoords:
          computer_player.draw(window, cGameGridCoords)
 
-    # --- Vẽ Tokens ---
     for token in tokens_list:
         token.draw(window)
 
@@ -92,7 +81,6 @@ def endScreen(window, background_image, buttons, winner_message):
     """Draws the Game Over screen."""
     window.blit(background_image, (0, 0))
     for button in buttons:
-        # Kích hoạt các nút AI và nút "Quit" (đã đổi từ "Back to Main")
         if button.name in ['Easy Computer', 'Medium Computer', 'Hard Computer', 'Quit']:
             button.active = True
             button.draw(window, False)
@@ -129,7 +117,6 @@ def updateGameScreen(window, game_state, assets, game_data):
     elif game_state == GAME_OVER:
         endScreen(window, backgrounds['end_screen'], buttons, winner_message)
 
-    # Vẽ message boxes luôn ở trên cùng
     for i in range(len(message_boxes_list) - 1, -1, -1):
          if not message_boxes_list[i].draw(window):
              message_boxes_list.pop(i)

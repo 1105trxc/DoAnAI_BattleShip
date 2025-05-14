@@ -134,13 +134,13 @@ def randomizeShipPositions(shiplist, gamegrid_coords):
     return True
 
 
-# Trong game_logic.py
-def resetShips(shiplist, reset_position=True): # Thêm tham số, mặc định là True
+
+def resetShips(shiplist, reset_position=True): 
     """Resets ships in the list. Optionally resets position."""
     for ship in shiplist:
         if reset_position: # Chỉ gọi returnToDefaultPosition nếu reset_position là True
             ship.returnToDefaultPosition()
-        ship.is_sunk = False # Luôn reset trạng thái is_sunk
+        ship.is_sunk = False # Alway reset sunk status
 
 
 def areShipsPlacedCorrectly(shiplist, gridCoords):

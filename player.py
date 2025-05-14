@@ -1,6 +1,6 @@
 import pygame
 import random
-import time  # Import thêm thư viện time
+import time 
 from constants import CELLSIZE
 from game_objects import Tokens 
 

@@ -1,10 +1,10 @@
 import pygame
 from constants import CELLSIZE, MESSAGE_BG_COLOR, RED, WHITE
-from utils import loadImage, STENCIL_FONT_22, STENCIL_FONT_30 # Import font từ utils
+from utils import loadImage, STENCIL_FONT_22, STENCIL_FONT_30 
 
 class MessageBox:
     def __init__(self, message, ship_image=None, duration=2000):
-        self.font = STENCIL_FONT_30 # Sử dụng font đã load
+        self.font = STENCIL_FONT_30 
         self.message = self.font.render(message, True, WHITE)
         self.bg_color = MESSAGE_BG_COLOR
         self.border_color = RED
@@ -26,7 +26,7 @@ class MessageBox:
             self.width = self.text_width + self.padding * 2
             self.height = self.text_height + self.padding * 2
 
-        # Center based on constants (cần import SCREENWIDTH, SCREENHEIGHT)
+        # Center based on constants 
         from constants import SCREENWIDTH, SCREENHEIGHT
         self.rect = pygame.Rect(0, 0, self.width, self.height)
         self.rect.center = (SCREENWIDTH // 2, SCREENHEIGHT // 2)
@@ -54,28 +54,22 @@ class MessageBox:
 
 class Guns:
     def __init__(self, imgPath, pos, size, offset):
-        # Giả sử imgPath là đường dẫn, cần load ảnh ở đây hoặc truyền ảnh đã load
-        # Để giữ nguyên, ta vẫn truyền path và load trong init
-        # Lưu ý: nên truyền ảnh đã load để tối ưu
         self.orig_image = loadImage(imgPath, size, True) if imgPath else None
         self.image = self.orig_image
         self.offset = offset
         if self.image:
             self.rect = self.image.get_rect(center=pos)
         else:
-             # Xử lý trường hợp không có ảnh súng
             self.rect = pygame.Rect(pos[0], pos[1], 0, 0)
 
 
     def update(self, ship):
-        if not self.orig_image: return # Không làm gì nếu không có ảnh
+        if not self.orig_image: return
 
         self.rotateGuns(ship)
         if not ship.rotation: # Vertical
             self.rect.center = (ship.rect.centerx, ship.rect.centery + (ship.vImageHeight // 2 * self.offset))
         else: # Horizontal
-             # Chú ý: offset âm/dương cần dựa vào hướng đặt súng ban đầu trên ảnh
-             # Đoạn code gốc dùng -offset cho chiều ngang, giữ nguyên logic đó
              self.rect.center = (ship.rect.centerx + (ship.hImageWidth // 2 * -self.offset), ship.rect.centery)
 
 
@@ -86,33 +80,15 @@ class Guns:
 
 
     def rotateGuns(self, ship):
-        if not self.orig_image: return # Không làm gì nếu không có ảnh
-        # Tính vector hướng từ tâm súng đến chuột
+        if not self.orig_image: return
         direction = pygame.math.Vector2(pygame.mouse.get_pos()) - pygame.math.Vector2(self.rect.center)
-        # Tránh lỗi chia cho 0 nếu chuột ở đúng tâm súng
         if direction.length() == 0: return
         radius, angle = direction.as_polar()
 
-        # Logic xoay súng có vẻ phức tạp và có thể cần điều chỉnh dựa trên hình ảnh thực tế
-        # Tạm giữ nguyên logic gốc
-        if not ship.rotation: # Tàu dọc
-             # Súng ở nửa trên (offset < 0?) hoặc nửa dưới (offset > 0?)
-             # Logic góc này hơi khó hiểu, cần kiểm tra lại với hình ảnh cụ thể
-             # Ví dụ: Nếu súng ở trên tâm (offset âm), chỉ xoay khi chuột ở nửa trên?
-             # if self.offset < 0 and angle <= 0: # Nửa trên?
-             #     self._update_image(angle)
-             # elif self.offset > 0 and angle >= 0: # Nửa dưới?
-             #     self._update_image(angle)
-             # Đơn giản hóa: Luôn xoay theo chuột?
-            self._update_image(angle) # Thử nghiệm xoay tự do trước
-        else: # Tàu ngang
-             # Súng ở nửa trái (offset âm?) hoặc nửa phải (offset dương?)
-             # if self.offset < 0 and (angle <= -90 or angle >= 90): # Nửa trái?
-             #     self._update_image(angle)
-             # elif self.offset > 0 and (angle >= -90 and angle <= 90): # Nửa phải?
-             #     self._update_image(angle)
-             # Đơn giản hóa:
-             self._update_image(angle) # Thử nghiệm xoay tự do trước
+        if not ship.rotation:
+            self._update_image(angle)
+        else:
+             self._update_image(angle)
 
 
     def draw(self, window, ship):
@@ -124,7 +100,7 @@ class Guns:
 class Ship:
     def __init__(self, name, img_path, pos, size, numGuns=0, gunPath=None, gunsize=None, gunCoordsOffset=None):
         self.name = name
-        self.pos = pos # Vị trí mặc định ban đầu
+        self.pos = pos
         # Load images using the utility function
         self.vImage = loadImage(img_path, size)
         self.vImageWidth = self.vImage.get_width()
@@ -235,7 +211,6 @@ class Ship:
         self.hImageRect.center = self.vImageRect.center
 
 
-        # === THAY THẾ HÀM snapToGrid TRONG game_objects.py ===
     def snapToGrid(self, gridCoords):
         """Snaps the ship to the grid using the original centering logic."""
         snapped = False # Flag to check if snapped
@@ -282,7 +257,6 @@ class Ship:
 
         # Sync the centers of both image rects after snapping
         self.hImageRect.center = self.vImageRect.center = self.rect.center
-    # === KẾT THÚC THAY THẾ snapToGrid ===
 
 
     def snapToGridEdge(self, gridCoords):

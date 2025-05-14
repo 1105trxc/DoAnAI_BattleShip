@@ -7,7 +7,7 @@ CELLSIZE = 50
 
 # Game States
 MAIN_MENU = 'Main Menu'
-DEPLOYMENT_STATE = 'Deployment' # Đổi tên để tránh trùng với biến boolean DEPLOYMENT
+DEPLOYMENT_STATE = 'Deployment'
 GAME_OVER = 'Game Over'
 STAGE = [MAIN_MENU, DEPLOYMENT_STATE, GAME_OVER]
 
@@ -44,7 +44,7 @@ HITSOUND_PATH = 'assets/sounds/explosion.wav'
 SHOTSOUND_PATH = 'assets/sounds/gunshot.wav'
 MISSSOUND_PATH = 'assets/sounds/splash.wav'
 
-# Colors (nếu cần)
+# Colors 
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 BLACK = (0, 0, 0)

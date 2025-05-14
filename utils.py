@@ -1,6 +1,5 @@
 import pygame
 
-# Khởi tạo font một lần để tối ưu
 pygame.font.init()
 STENCIL_FONT_22 = pygame.font.SysFont('Stencil', 22)
 STENCIL_FONT_30 = pygame.font.SysFont('Stencil', 30)
@@ -17,7 +16,6 @@ def loadImage(path, size, rotate=False, alpha=True):
         return img
     except pygame.error as e:
         print(f"Error loading image: {path} - {e}")
-        # Trả về surface trống nếu lỗi để tránh crash
         return pygame.Surface(size, pygame.SRCALPHA)
 
 
@@ -35,11 +33,8 @@ def loadAnimationImages(path, aniNum, size):
     return imageList
 
 def loadSpriteSheetImages(spriteSheet, rows, cols, newSize, size):
-    # Tạo surface tạm thời với kích thước gốc của một sprite
-    image = pygame.Surface(size, pygame.SRCALPHA) # SRCALPHA để giữ độ trong suốt
-    # Blit phần cần cắt từ sprite sheet vào surface tạm thời
+    image = pygame.Surface(size, pygame.SRCALPHA)
     image.blit(spriteSheet, (0, 0), (cols * size[0], rows * size[1], size[0], size[1]))
-    # Scale về kích thước mới
     image = pygame.transform.scale(image, newSize)
     return image
 
@@ -50,10 +45,9 @@ def loadSound(path, volume):
         return sound
     except pygame.error as e:
         print(f"Error loading sound: {path} - {e}")
-        return None # Trả về None nếu lỗi
+        return None 
 
 def shipLabelMaker(msg):
-    # Sử dụng font đã khởi tạo
     textMessage = STENCIL_FONT_22.render(msg, 1, (0, 17, 167)) # BLUE color from constants
     textMessage = pygame.transform.rotate(textMessage, 90)
     return textMessage

@@ -24,6 +24,6 @@ def showGridOnScreen(window, cellsize, playerGridCoords, computerGridCoords):
 
         for row in grid_coords:
             for col_coord in row:
-                # Vẽ hình chữ nhật trắng cho mỗi ô
+                # Draw the white rectangle for each cell
                 pygame.draw.rect(window, WHITE, (col_coord[0], col_coord[1], cellsize, cellsize), 1)
        
