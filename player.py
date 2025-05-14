@@ -260,7 +260,7 @@ class HardComputer(EasyComputer):
         self.q_table = {}  # Dictionary to store Q-values
         self.learning_rate = 0.1  # Alpha - how much to update our values
         self.discount_factor = 0.9  # Gamma - how much to value future rewards
-        self.epsilon = 0.1  # Exploration rate
+        self.epsilon = 0.2  # Exploration rate
         
         # Load Q-table if exists, otherwise initialize new one
         self.load_q_table()
